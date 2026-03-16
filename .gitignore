@@ -1,0 +1,19 @@
+# ====== Sensitive Config Files (DO NOT COMMIT) ======
+src/config.json
+.env
+src/cookies*.txt
+
+# ====== Python Cache ======
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# ====== Debug Artifacts ======
+debug_*.png
+*.log
+
+# ====== OS ======
+.DS_Store
+Thumbs.db

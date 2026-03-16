@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 邮件智能助手</title>
+    <meta name="description" content="XJTLU AI 邮件智能助手 - 自动搜索、提取与总结邮件内容">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        window.onload = function () {
+            if (typeof marked === 'undefined') {
+                window.marked = { parse: (text) => text.replace(/\n/g, '<br>') };
+            }
+        };
+    </script>
+    <style>
+        /* ====== CSS Variables — Light & Dark Themes ====== */
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-glow: rgba(99, 102, 241, 0.35);
+            --accent: #ec4899;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+
+            --bg-body: #f0f2f5;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-card: rgba(255, 255, 255, 0.97);
+            --bg-card-inner: #ffffff;
+            --bg-input: #f9fafb;
+            --bg-input-focus: #ffffff;
+            --bg-hover: #f3f4f6;
+            --bg-code: #f3f4f6;
+
+            --border-color: #e5e7eb;
+            --border-focus: var(--primary);
+
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-tertiary: #9ca3af;
+            --text-on-primary: #ffffff;
+
+            --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.12);
+            --shadow-btn: 0 4px 14px rgba(99, 102, 241, 0.35);
+            --shadow-btn-hover: 0 8px 25px rgba(99, 102, 241, 0.45);
+
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #0f1117;
+            --bg-gradient: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+            --bg-card: rgba(30, 32, 44, 0.95);
+            --bg-card-inner: #1a1c2e;
+            --bg-input: #252738;
+            --bg-input-focus: #2d2f44;
+            --bg-hover: #2a2c40;
+            --bg-code: #252738;
+
+            --border-color: #374151;
+            --border-focus: #818cf8;
+
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+
+            --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.4);
+            --shadow-btn: 0 4px 14px rgba(99, 102, 241, 0.25);
+            --shadow-btn-hover: 0 8px 25px rgba(99, 102, 241, 0.4);
+        }
+
+        /* ====== Reset & Base ====== */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            color: var(--text-primary);
+            transition: background var(--transition), color var(--transition);
+        }
+
+        /* ====== Main Card ====== */
+        .container {
+            background: var(--bg-card);
+            padding: 48px 44px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            width: 100%;
+            max-width: 860px;
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            position: relative;
+            transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+        }
+
+        /* ====== Top Bar (Theme + Help) ====== */
+        .top-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .icon-btn {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            width: auto;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: none;
+            text-decoration: none;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-hover);
+            transform: translateY(-1px);
+            color: var(--primary);
+        }
+
+        .cookie-status-text {
+            margin-top: -10px;
+            margin-bottom: 16px;
+            font-size: 0.86rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .cookie-status-text.ok {
+            color: var(--success);
+        }
+
+        .cookie-status-text.bad {
+            color: var(--error);
+        }
+
+        .cookie-status-text.warn {
+            color: var(--warning);
+        }
+
+        /* ====== Title ====== */
+        h1 {
+            text-align: center;
+            margin-bottom: 36px;
+            font-weight: 800;
+            font-size: 2.4rem;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ====== Input Groups ====== */
+        .input-group {
+            margin-bottom: 22px;
+            position: relative;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            letter-spacing: 0.01em;
+        }
+
+        .input-group input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-family: inherit;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            transition: all var(--transition);
+        }
+
+        .input-group input[type="text"]:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+            outline: none;
+            background: var(--bg-input-focus);
+        }
+
+        /* ====== Primary Button ====== */
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            color: var(--text-on-primary);
+            border: none;
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: 700;
+            font-family: inherit;
+            letter-spacing: 0.02em;
+            transition: all var(--transition);
+            box-shadow: var(--shadow-btn);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-btn-hover);
+            filter: brightness(1.05);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            background: var(--text-tertiary);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            filter: none;
+        }
+
+        /* ====== Progress Steps (改进一) ====== */
+        .progress-container {
+            display: none;
+            margin: 30px 0;
+            padding: 24px;
+            background: var(--bg-card-inner);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .progress-steps::before {
+            content: '';
+            position: absolute;
+            top: 18px;
+            left: 16%;
+            right: 16%;
+            height: 3px;
+            background: var(--border-color);
+            z-index: 0;
+            border-radius: 2px;
+        }
+
+        .progress-bar-fill {
+            position: absolute;
+            top: 18px;
+            left: 16%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            z-index: 1;
+            border-radius: 2px;
+            transition: width 0.6s ease;
+            width: 0%;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            flex: 1;
+        }
+
+        .step-circle {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--bg-card-inner);
+            border: 3px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.4s ease;
+            margin-bottom: 8px;
+        }
+
+        .step.active .step-circle {
+            border-color: var(--primary);
+            background: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+            animation: stepPulse 1.5s ease-in-out infinite;
+        }
+
+        .step.completed .step-circle {
+            border-color: var(--success);
+            background: var(--success);
+        }
+
+        .step-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-align: center;
+            transition: color var(--transition);
+        }
+
+        .step.active .step-label {
+            color: var(--primary);
+        }
+
+        .step.completed .step-label {
+            color: var(--success);
+        }
+
+        .progress-detail {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            font-weight: 500;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes stepPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 10px var(--primary-glow);
+            }
+
+            50% {
+                box-shadow: 0 0 25px var(--primary-glow);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.7;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ====== Results ====== */
+        .results-container {
+            margin-top: 30px;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .card {
+            background: var(--bg-card-inner);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            transition: background var(--transition), border-color var(--transition);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Copy Button (改进一) */
+        .btn-copy {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-family: inherit;
+        }
+
+        .btn-copy:hover {
+            background: var(--bg-hover);
+            color: var(--primary);
+        }
+
+        .btn-copy.copied {
+            background: #d1fae5;
+            color: #065f46;
+            border-color: #a7f3d0;
+        }
+
+        /* Summary Markdown Styles */
+        #summaryResult {
+            line-height: 1.8;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        #summaryResult h1,
+        #summaryResult h2,
+        #summaryResult h3 {
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            color: var(--text-primary);
+        }
+
+        #summaryResult ul,
+        #summaryResult ol {
+            padding-left: 20px;
+            margin-bottom: 1em;
+        }
+
+        #summaryResult li {
+            margin-bottom: 0.5em;
+        }
+
+        #summaryResult strong {
+            color: var(--primary);
+        }
+
+        #summaryResult code {
+            background: var(--bg-code);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.88em;
+        }
+
+        /* Typewriter Cursor (改进一) */
+        .typewriter-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.1em;
+            background: var(--primary);
+            margin-left: 2px;
+            animation: blink 0.8s step-end infinite;
+            vertical-align: text-bottom;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        /* Email List */
+        .email-list {
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .email-item {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color var(--transition);
+            border-radius: 6px;
+            margin-bottom: 2px;
+        }
+
+        .email-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .email-item:last-child {
+            border-bottom: none;
+        }
+
+        .email-subject {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            font-size: 0.93rem;
+        }
+
+        .email-date {
+            color: var(--text-tertiary);
+            font-size: 0.82rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* ====== Search History (改进三) ====== */
+        .history-section {
+            margin-top: 20px;
+            margin-bottom: 24px;
+        }
+
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .history-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-clear-history {
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            font-size: 0.78rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all var(--transition);
+            font-family: inherit;
+            width: auto;
+        }
+
+        .btn-clear-history:hover {
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .history-chip {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            max-width: 280px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .history-chip:hover {
+            background: var(--primary);
+            color: var(--text-on-primary);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        .history-chip .chip-keyword {
+            font-weight: 600;
+        }
+
+        .history-chip .chip-time {
+            font-size: 0.72rem;
+            opacity: 0.7;
+        }
+
+        .history-empty {
+            color: var(--text-tertiary);
+            font-size: 0.82rem;
+            font-style: italic;
+            padding: 4px 0;
+        }
+
+        /* ====== Modal ====== */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background: rgba(0, 0, 0, 0.5);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            margin: 5% auto;
+            padding: 36px;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 800px;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            animation: fadeInUp 0.3s ease;
+            color: var(--text-primary);
+        }
+
+        .close {
+            color: var(--text-tertiary);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color var(--transition);
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: var(--text-primary);
+        }
+
+        .tutorial-section {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tutorial-section:last-child {
+            border-bottom: none;
+        }
+
+        .tutorial-section h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.05rem;
+        }
+
+        .tutorial-section p,
+        .tutorial-section li {
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .code-block {
+            background: var(--bg-code);
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.88em;
+            color: var(--accent);
+            display: block;
+            margin: 8px 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            border: 1px solid var(--border-color);
+        }
+
+        /* ====== Scrollbar ====== */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-tertiary);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* ====== Responsive ====== */
+        @media (max-width: 640px) {
+            .container {
+                padding: 28px 20px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .step-label {
+                font-size: 0.68rem;
+            }
+
+            .step-circle {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+        }
+
+        .results-hidden {
+            display: none;
+        }
+
+        /* ====== Results History ====== */
+        .results-history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .results-history-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-clear-results {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-tertiary);
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: inherit;
+        }
+
+        .btn-clear-results:hover {
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--error);
+        }
+
+        .result-entry {
+            background: var(--bg-card-inner);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            transition: background var(--transition), border-color var(--transition);
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .result-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed var(--border-color);
+        }
+
+        .result-meta-tag {
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            color: var(--text-on-primary);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .result-meta-time {
+            color: var(--text-tertiary);
+            font-size: 0.8rem;
+        }
+
+        .result-meta-instruction {
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            font-style: italic;
+            flex-basis: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .result-summary-section {
+            margin-bottom: 16px;
+        }
+
+        .result-summary-section .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .result-email-section .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .modal-heading {
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .tutorial-section-last {
+            border-bottom: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <!-- 改进四：刷新验证 Cookie 按钮 -->
+            <button class="icon-btn" id="cookieStatusBtn" onclick="checkCookieStatus()">
+                <span id="cookieIcon">🍪</span>
+                <span id="cookieLabel">刷新并验证 Cookie</span>
+            </button>
+            <a class="icon-btn" href="{{ mail_url }}" target="_blank" rel="noopener noreferrer">
+                <span>📬</span>
+                <span>打开邮箱</span>
+            </a>
+            <button class="icon-btn" id="themeToggle" onclick="toggleTheme()">
+                <span id="themeIcon">🌙</span> <span id="themeLabel">深色模式</span>
+            </button>
+            <button class="icon-btn" onclick="openModal()">📚 使用教程</button>
+        </div>
+        <div id="cookieStatusText" class="cookie-status-text">Cookie 状态：未检查</div>
+
+        <h1>✨ AI 邮件智能助手</h1>
+
+        <!-- Input -->
+        <div class="input-group">
+            <label for="keyword">🔍 搜索关键词</label>
+            <input type="text" id="keyword" placeholder="输入关键词搜索，或留空查看最新邮件...">
+        </div>
+
+        <div class="input-group">
+            <label for="instruction">💡 总结指令</label>
+            <input type="text" id="instruction" placeholder="告诉 AI 如何总结..." value="请用自然语气总结这10封邮件，重点关注活动、课程作业和重要事项。">
+        </div>
+
+        <button class="btn-primary" id="runBtn" onclick="runTask()">
+            <span>🚀 开始智能分析</span>
+        </button>
+
+        <!-- Search History (改进三) -->
+        <div class="history-section" id="historySection">
+            <div class="history-header">
+                <span class="history-title">🕐 搜索历史</span>
+                <button class="btn-clear-history" onclick="clearHistory()">清空历史</button>
+            </div>
+            <div class="history-list" id="historyList">
+                <span class="history-empty">暂无搜索记录</span>
+            </div>
+        </div>
+
+        <!-- Progress Steps (改进一) -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-steps">
+                <div class="progress-bar-fill" id="progressBarFill"></div>
+                <div class="step" id="step-connecting">
+                    <div class="step-circle">🌐</div>
+                    <span class="step-label">连接邮箱</span>
+                </div>
+                <div class="step" id="step-searching">
+                    <div class="step-circle">🔍</div>
+                    <span class="step-label">搜索邮件</span>
+                </div>
+                <div class="step" id="step-extracting">
+                    <div class="step-circle">📄</div>
+                    <span class="step-label">提取正文</span>
+                </div>
+                <div class="step" id="step-summarizing">
+                    <div class="step-circle">🤖</div>
+                    <span class="step-label">AI 总结</span>
+                </div>
+            </div>
+            <p class="progress-detail" id="progressDetail">正在準备...</p>
+        </div>
+
+        <!-- Results History -->
+        <div id="resultsHistory" class="results-container results-hidden">
+            <div class="results-history-header">
+                <div class="results-history-title">📋 查询结果</div>
+                <button class="btn-clear-results" onclick="clearAllResults()">🗑️ 清空全部</button>
+            </div>
+            <div id="resultsEntries"></div>
+        </div>
+    </div>
+
+    <!-- Tutorial Modal -->
+    <div id="tutorialModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 class="modal-heading">📚
+                使用教程与设置指南</h2>
+
+            <div class="tutorial-section">
+                <h3>🔑 1. 配置 API 和 URL</h3>
+                <p>要使用 AI 总结功能，您需要配置 AI 服务商的 API Key。</p>
+                <ol>
+                    <li>在程序根目录下找到 <strong>src</strong> 文件夹。</li>
+                    <li>打开 <strong>src/config.json</strong> 文件（推荐使用 VS Code 或记事本）。</li>
+                    <li>找到 <code>"ai"</code> 部分，修改以下字段：</li>
+                </ol>
+                <code class="code-block">
+"ai": {
+  "base_url": "您的 API 地址 (例如 https://api.openai.com/v1)",
+  "api_key": "您的 sk-开头的密钥",
+  "model": "gpt-4o-mini"
+}
+                </code>
+            </div>
+
+            <div class="tutorial-section">
+                <h3>🍪 2. 获取并配置 Cookie</h3>
+                <p>为了让程序能够访问您的学校邮箱，需要提供登录后的 Cookie。</p>
+                <ol>
+                    <li>在 Chrome 或 Edge 浏览器中安装 <strong>Cookie-Editor</strong> 插件。</li>
+                    <li>登录您的学校邮箱 (<a href="https://mail.xjtlu.edu.cn/owa" target="_blank"
+                            rel="noopener">mail.xjtlu.edu.cn</a>)。</li>
+                    <li>点击浏览器右上角的 Cookie-Editor 图标。</li>
+                    <li>点击右下角的 <strong>Export</strong> 按钮，选择 <strong>Export as JSON</strong>。</li>
+                    <li>打开 <strong>src/config.json</strong>，把导出的 JSON 粘贴到 <code>"cookies"</code> 字段中。</li>
+                </ol>
+                <p><strong>注意：</strong>Cookie 会定期失效，如果程序无法登录，请重复此步骤更新。</p>
+            </div>
+
+            <div class="tutorial-section tutorial-section-last">
+                <h3>📂 3. 文件结构说明</h3>
+                <ul>
+                    <li><strong>run_app.bat</strong>: 唯一的启动入口，双击即可运行。</li>
+                    <li><strong>src/config.json</strong>: 配置文件，在此修改 API 和 Cookie。</li>
+                    <li><strong>src/app.py</strong>: 核心服务程序。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====== 深色模式 (改进一) ======
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            const theme = saved || 'light';
+            applyTheme(theme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+            localStorage.setItem('theme', next);
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            document.getElementById('themeIcon').textContent = theme === 'dark' ? '☀️' : '🌙';
+            document.getElementById('themeLabel').textContent = theme === 'dark' ? '浅色模式' : '深色模式';
+        }
+
+        initTheme();
+
+        // ====== Modal ======
+        function openModal() { document.getElementById('tutorialModal').style.display = "block"; }
+        function closeModal() { document.getElementById('tutorialModal').style.display = "none"; }
+        window.onclick = function (event) {
+            if (event.target === document.getElementById('tutorialModal')) closeModal();
+        };
+
+        // ====== 搜索历史 (改进三) ======
+        const HISTORY_KEY = 'email_search_history';
+        const MAX_HISTORY = 10;
+
+        function loadHistory() {
+            try {
+                return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+            } catch { return []; }
+        }
+
+        function saveToHistory(keyword, instruction) {
+            const history = loadHistory();
+            // 避免重复
+            const exists = history.findIndex(h => h.keyword === keyword && h.instruction === instruction);
+            if (exists !== -1) history.splice(exists, 1);
+
+            history.unshift({
+                keyword,
+                instruction,
+                time: new Date().toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            });
+
+            // 限制最多 10 条
+            if (history.length > MAX_HISTORY) history.pop();
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+            const history = loadHistory();
+            if (history.length === 0) {
+                container.innerHTML = '<span class="history-empty">暂无搜索记录</span>';
+                return;
+            }
+            container.innerHTML = history.map((h, i) =>
+                `<div class="history-chip" onclick="fillFromHistory(${i})" title="${h.keyword} — ${h.instruction}">
+                    <span class="chip-keyword">${h.keyword}</span>
+                    <span class="chip-time">${h.time}</span>
+                </div>`
+            ).join('');
+        }
+
+        function fillFromHistory(index) {
+            const history = loadHistory();
+            if (history[index]) {
+                document.getElementById('keyword').value = history[index].keyword;
+                document.getElementById('instruction').value = history[index].instruction;
+            }
+        }
+
+        function clearHistory() {
+            localStorage.removeItem(HISTORY_KEY);
+            renderHistory();
+        }
+
+        renderHistory();
+
+        // ====== 启动提醒：距上次处理邮件的时间 ======
+        (function showLastProcessReminder() {
+            const lastTime = localStorage.getItem('last_email_process_time');
+            if (!lastTime) {
+                alert('👋 欢迎使用 AI 邮件助手！\n\n您还没有处理过邮件，快来试试吧！');
+                return;
+            }
+            const last = new Date(lastTime);
+            const now = new Date();
+            const diffMs = now - last;
+            const diffMin = Math.floor(diffMs / 60000);
+            const diffHour = Math.floor(diffMs / 3600000);
+            const diffDay = Math.floor(diffMs / 86400000);
+
+            let timeStr = '';
+            if (diffDay > 0) {
+                const remainHour = Math.floor((diffMs % 86400000) / 3600000);
+                timeStr = `${diffDay} 天 ${remainHour} 小时`;
+            } else if (diffHour > 0) {
+                const remainMin = Math.floor((diffMs % 3600000) / 60000);
+                timeStr = `${diffHour} 小时 ${remainMin} 分钟`;
+            } else {
+                timeStr = `${diffMin} 分钟`;
+            }
+
+            alert(`📬 您已经 ${timeStr} 没有处理过邮件了！\n\n上次处理时间：${last.toLocaleString('zh-CN')}`);
+        })();
+
+        // ====== 进度条 (改进一 + 改进二) ======
+        const STAGES = ['connecting', 'searching', 'extracting', 'summarizing'];
+        let statusPollInterval = null;
+
+        function setProgressStage(stage, detail) {
+            const idx = STAGES.indexOf(stage);
+            STAGES.forEach((s, i) => {
+                const el = document.getElementById('step-' + s);
+                el.classList.remove('active', 'completed');
+                if (i < idx) el.classList.add('completed');
+                else if (i === idx) el.classList.add('active');
+            });
+
+            // Progress bar fill
+            const fill = document.getElementById('progressBarFill');
+            // Track spans from left:16% to right:16%, so total track width = 68%
+            const trackWidth = 68; // percentage of container
+            const percent = idx >= 0 ? (idx / (STAGES.length - 1)) * trackWidth : 0;
+            fill.style.width = percent + '%';
+
+            document.getElementById('progressDetail').textContent = detail || '';
+        }
+
+        function startStatusPolling() {
+            statusPollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/status');
+                    const data = await res.json();
+                    if (data.stage && data.stage !== 'idle' && data.stage !== 'done') {
+                        setProgressStage(data.stage, data.detail);
+                    }
+                } catch (e) { /* ignore */ }
+            }, 1500);
+        }
+
+        function stopStatusPolling() {
+            if (statusPollInterval) {
+                clearInterval(statusPollInterval);
+                statusPollInterval = null;
+            }
+        }
+
+        // ====== 打字机效果 (改进一) ======
+        function typewriterEffect(element, html, callback) {
+            // Parse HTML to plain text for typing, then show full HTML at end
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            const plainText = tempDiv.textContent || tempDiv.innerText || '';
+
+            element.innerHTML = '';
+            const cursor = document.createElement('span');
+            cursor.className = 'typewriter-cursor';
+
+            let i = 0;
+            const chunkSize = 3; // characters per tick for speed
+            const delay = 15; // ms per tick
+
+            function type() {
+                if (i < plainText.length) {
+                    const chunk = plainText.substring(i, i + chunkSize);
+                    element.textContent += chunk;
+                    element.appendChild(cursor);
+                    i += chunkSize;
+                    setTimeout(type, delay);
+                } else {
+                    // Typing done — show full formatted HTML
+                    cursor.remove();
+                    element.innerHTML = html;
+                    if (callback) callback();
+                }
+            }
+            type();
+        }
+
+        // ====== 复制总结（每条独立） ======
+        function copySummaryEntry(btnEl, text) {
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                const icon = btnEl.querySelector('.copy-icon');
+                const label = btnEl.querySelector('.copy-label');
+                btnEl.classList.add('copied');
+                icon.textContent = '✅';
+                label.textContent = '已复制!';
+                setTimeout(() => {
+                    btnEl.classList.remove('copied');
+                    icon.textContent = '📋';
+                    label.textContent = '复制总结';
+                }, 2000);
+            });
+        }
+
+        // ====== 查询结果持久化 ======
+        const RESULTS_KEY = 'email_query_results';
+        const MAX_RESULTS = 20;
+        let resultCounter = 0;
+
+        function loadResultsFromStorage() {
+            try {
+                return JSON.parse(localStorage.getItem(RESULTS_KEY) || '[]');
+            } catch { return []; }
+        }
+
+        function saveResultToStorage(record) {
+            const results = loadResultsFromStorage();
+            results.unshift(record);
+            if (results.length > MAX_RESULTS) results.length = MAX_RESULTS;
+            localStorage.setItem(RESULTS_KEY, JSON.stringify(results));
+        }
+
+        // ====== 渲染单条结果卡片（共享函数） ======
+        function renderResultEntry(record, useTypewriter) {
+            resultCounter++;
+            const entryId = 'result-entry-' + resultCounter;
+            const summaryId = 'summary-' + resultCounter;
+
+            const entry = document.createElement('div');
+            entry.className = 'result-entry';
+            entry.id = entryId;
+
+            // -- Meta row --
+            let metaHTML = `<div class="result-meta">`;
+            metaHTML += `<span class="result-meta-tag">${record.keyword || '最新邮件'}</span>`;
+            metaHTML += `<span class="result-meta-time">🕐 ${record.time}</span>`;
+            if (record.instruction) {
+                metaHTML += `<span class="result-meta-instruction" title="${record.instruction}">💡 ${record.instruction}</span>`;
+            }
+            metaHTML += `</div>`;
+
+            // -- Summary section --
+            let summaryHTML = `<div class="result-summary-section">`;
+            summaryHTML += `<div class="card-header">`;
+            summaryHTML += `  <div class="card-title">📝 智能总结</div>`;
+            summaryHTML += `  <button class="btn-copy" onclick="copySummaryEntry(this, document.getElementById('${summaryId}')._rawText)">`;
+            summaryHTML += `    <span class="copy-icon">📋</span> <span class="copy-label">复制总结</span>`;
+            summaryHTML += `  </button>`;
+            summaryHTML += `</div>`;
+            summaryHTML += `<div id="${summaryId}"></div>`;
+            summaryHTML += `</div>`;
+
+            // -- Email list section --
+            let emailHTML = `<div class="result-email-section">`;
+            emailHTML += `<div class="card-header">`;
+            emailHTML += `  <div class="card-title">📬 原始邮件列表 `;
+            const emailCount = (record.emails && record.emails.length) || 0;
+            emailHTML += `    <span class="status-badge status-success">${emailCount} 封</span>`;
+            emailHTML += `  </div>`;
+            emailHTML += `</div>`;
+            emailHTML += `<div class="email-list">`;
+            if (record.emails && record.emails.length > 0) {
+                record.emails.forEach(email => {
+                    emailHTML += `<div class="email-item">`;
+                    emailHTML += `  <div class="email-subject">${email.subject}</div>`;
+                    emailHTML += `  <div class="email-date">📅 ${email.date}</div>`;
+                    emailHTML += `</div>`;
+                });
+            } else {
+                emailHTML += '<div style="padding:15px;text-align:center;color:var(--text-tertiary)">未找到相关邮件</div>';
+            }
+            emailHTML += `</div></div>`;
+
+            entry.innerHTML = metaHTML + summaryHTML + emailHTML;
+
+            // Attach raw text and render summary
+            const container = document.getElementById('resultsEntries');
+            container.appendChild(entry); // 先加入 DOM，再操作子元素
+
+            const summaryEl = document.getElementById(summaryId);
+            summaryEl._rawText = record.summary || '';
+            const parsedHTML = record.summary ? marked.parse(record.summary) : '<p>没有生成总结内容。</p>';
+
+            if (useTypewriter) {
+                typewriterEffect(summaryEl, parsedHTML);
+            } else {
+                summaryEl.innerHTML = parsedHTML;
+            }
+
+            return entry;
+        }
+
+        // ====== 页面加载时恢复历史结果 ======
+        function restoreResults() {
+            const results = loadResultsFromStorage();
+            if (results.length === 0) return;
+
+            const resultsHistory = document.getElementById('resultsHistory');
+            resultsHistory.classList.remove('results-hidden');
+
+            // 按时间正序渲染（旧的先 append），最后最新的在最上面
+            // 存储时 results[0] = 最新，需要反转后 append
+            const reversed = [...results].reverse();
+            reversed.forEach(record => {
+                renderResultEntry(record, false);
+            });
+
+            // 再反转 DOM 顺序，让最新的在顶部
+            const container = document.getElementById('resultsEntries');
+            const children = Array.from(container.children);
+            children.reverse().forEach(child => container.appendChild(child));
+        }
+
+        restoreResults();
+
+        // ====== 清空所有历史结果 ======
+        function clearAllResults() {
+            localStorage.removeItem(RESULTS_KEY);
+            document.getElementById('resultsEntries').innerHTML = '';
+            document.getElementById('resultsHistory').classList.add('results-hidden');
+        }
+
+        // ====== Main Task Runner ======
+        async function runTask() {
+            const keyword = document.getElementById('keyword').value.trim();
+            const instruction = document.getElementById('instruction').value.trim();
+            const runBtn = document.getElementById('runBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const resultsHistory = document.getElementById('resultsHistory');
+
+            // Reset UI
+            runBtn.disabled = true;
+            runBtn.innerHTML = '<span>⏳ 处理中...</span>';
+            progressContainer.style.display = 'block';
+            setProgressStage('connecting', '正在连接邮箱服务器...');
+
+            // Start polling backend status
+            startStatusPolling();
+
+            try {
+                const response = await fetch('/api/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keyword: keyword, instruction })
+                });
+
+                const data = await response.json();
+                stopStatusPolling();
+
+                if (data.status === 'cookie_expired') {
+                    setProgressStage('searching', '');
+                    document.getElementById('progressDetail').textContent = '⚠️ Cookie 已过期';
+                    document.getElementById('progressDetail').style.animation = 'none';
+                    alert('⚠️ 无法定位搜索框，可能是 Cookie 已过期。\n\n请按以下步骤更新：\n1. 在浏览器中重新登录学校邮箱\n2. 用 Cookie-Editor 导出新的 Cookie\n3. 粘贴到 src/config.json 的 cookies 字段中\n4. 重启程序后重试');
+                } else if (data.status === 'success') {
+                    // Mark all steps completed
+                    STAGES.forEach(s => {
+                        const el = document.getElementById('step-' + s);
+                        el.classList.remove('active');
+                        el.classList.add('completed');
+                    });
+                    document.getElementById('progressBarFill').style.width = '100%';
+                    document.getElementById('progressDetail').textContent = '✅ 分析完成!';
+
+                    // Save to search history
+                    saveToHistory(keyword || '(最新邮件)', instruction);
+                    localStorage.setItem('last_email_process_time', new Date().toISOString());
+
+                    // ====== Build result record ======
+                    const now = new Date().toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    const record = {
+                        keyword: keyword || '',
+                        instruction: instruction,
+                        summary: data.summary || '',
+                        emails: data.emails || [],
+                        time: now,
+                    };
+
+                    // Persist to localStorage
+                    saveResultToStorage(record);
+
+                    // Render with typewriter effect & prepend
+                    resultsHistory.classList.remove('results-hidden');
+                    const entry = renderResultEntry(record, true);
+
+                    // Move to top (renderResultEntry appends, we want prepend for new)
+                    const container = document.getElementById('resultsEntries');
+                    container.prepend(entry);
+
+                    // Hide progress after a short delay
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                    }, 1500);
+
+                    entry.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    setProgressStage('connecting', '❌ ' + (data.message || '执行失败'));
+                    document.getElementById('progressDetail').style.animation = 'none';
+                    alert('执行失败: ' + (data.message || 'Unknown error'));
+                }
+            } catch (e) {
+                stopStatusPolling();
+                setProgressStage('connecting', '❌ 网络请求错误');
+                document.getElementById('progressDetail').style.animation = 'none';
+                alert('请求错误: ' + e.message);
+            } finally {
+                runBtn.disabled = false;
+                runBtn.innerHTML = '<span>🚀 开始智能分析</span>';
+            }
+        }
+
+        // ====== 验证/刷新 Cookie (改进四) ======
+        function setCookieStatusText(text, mode = '') {
+            const el = document.getElementById('cookieStatusText');
+            el.classList.remove('ok', 'bad', 'warn');
+            if (mode) el.classList.add(mode);
+            el.textContent = text;
+        }
+
+        async function checkCookieStatus() {
+            const btn = document.getElementById('cookieStatusBtn');
+            const icon = document.getElementById('cookieIcon');
+            const label = document.getElementById('cookieLabel');
+
+            // 改变状态为检查中
+            btn.disabled = true;
+            icon.textContent = '⏳';
+            label.textContent = '检查中...';
+            setCookieStatusText('Cookie 状态：检查中...', 'warn');
+
+            try {
+                const response = await fetch('/api/check_cookie', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'valid') {
+                    // 成功
+                    icon.textContent = '✅';
+                    label.textContent = 'Cookie 有效';
+                    btn.style.color = 'var(--success)';
+                    btn.style.borderColor = 'var(--success)';
+                    setCookieStatusText('Cookie 状态：有效，可正常访问邮箱。', 'ok');
+                    alert('🎉 验证成功：\n' + data.message);
+                } else if (data.status === 'invalid') {
+                    // 失效
+                    icon.textContent = '❌';
+                    label.textContent = 'Cookie 失效';
+                    btn.style.color = 'var(--error)';
+                    btn.style.borderColor = 'var(--error)';
+                    setCookieStatusText('Cookie 状态：失效，请更新 Cookie。', 'bad');
+                    alert('⚠️ 验证失败：\n' + data.message + '\n\n请使用 Cookie-Editor 更新 config.json 中的内容。');
+                } else {
+                    // 警告或错误
+                    icon.textContent = '⚠️';
+                    label.textContent = 'Cookie 异常';
+                    btn.style.color = 'var(--warning)';
+                    btn.style.borderColor = 'var(--warning)';
+                    setCookieStatusText('Cookie 状态：异常，建议重新检查配置。', 'warn');
+                    alert('🤔 状态异常：\n' + (data.message || '未知错误'));
+                }
+            } catch (e) {
+                icon.textContent = '❌';
+                label.textContent = '检查失败';
+                btn.style.color = 'var(--error)';
+                btn.style.borderColor = 'var(--error)';
+                setCookieStatusText('Cookie 状态：请求失败，请检查服务是否运行。', 'bad');
+                alert('请求错误: ' + e.message);
+            } finally {
+                btn.disabled = false;
+
+                // 3秒后恢复默认样式
+                setTimeout(() => {
+                    icon.textContent = '🍪';
+                    label.textContent = '刷新并验证 Cookie';
+                    btn.style.color = 'var(--text-secondary)';
+                    btn.style.borderColor = 'var(--border-color)';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+
+</html>

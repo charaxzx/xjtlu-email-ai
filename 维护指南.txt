@@ -1,0 +1,50 @@
+# 📧 XJTLU 邮件自动总结项目 - 维护指南
+
+你好！欢迎参与这个项目的维护。本项目通过 Playwright 自动化技术登录 OWA (Outlook Web App)，提取最近邮件内容，并利用大语言模型（LLM）进行智能总结。
+
+---
+
+## 📂 项目结构快速了解
+
+- `src/main.py`: **核心引擎**。包含了浏览器初始化、邮件搜索、正文提取和 LLM 调用逻辑。
+- `src/app.py`: **Web 服务层**。基于 FastAPI 封装了 API 接口，并提供了一个简单的 HTML 交互界面（运行在 8001 端口）。
+- `config.json`: **动态配置**。存放项目运行所需的 URL、API 密钥、Cookie 信息以及 CSS 选择器。（首次使用请复制 `src/config.example.json` 并重命名）
+- `.env`: **环境变量**。存放 API Key 的备选方案。（首次使用请复制 `.env.example` 并重命名）
+
+---
+
+## 🛠️ 环境准备
+
+1. **安装依赖**:
+   ```bash
+   pip install -r src/requirements.txt
+   playwright install msedge
+   ```
+
+2. **配置 API**:
+   复制 `src/config.example.json` 为 `src/config.json`，填入你的 LLM API 信息（支持 OpenAI 接口格式）。
+
+---
+
+## 🔄 日常维护重点 (开发者必看)
+
+### 1. 更新 Cookie (最常见维护项)
+由于 XJTLU 登录通常有双因素认证（MFA），本项目采用 **Cookie 注入** 的方式绕过登录。如果程序提示“无法定位搜索框”，通常是 Cookie 过期了。
+- 使用浏览器插件（如 "Cookie-Editor"）以 **JSON 格式**（Export as JSON）导出邮件系统的 Cookie。
+- 粘贴到 `src/config.json` 中的 `cookies` 数组字段，或者保存为 `src/cookies.txt` 并在 config 中配置。
+
+### 2. 维护 CSS 选择器
+如果 Outlook 网页版更新了 UI，导致无法搜到邮件或提取正文：
+- 打开开发者工具 (F12)，检查搜索框、邮件列表项的最新选择器。
+- 修改 `config.json` 中的 `selectors` 模块。
+
+### 3. LLM 提示词微调
+如果总结效果不理想，可以修改 `src/main.py` 中的 `summary_prompt` (约 420 行)。
+
+---
+
+## 🚀 启动项目
+- **命令行模式**: `python src/main.py` (按提示输入指令)
+- **Web 界面模式**: 双击 `run_app.bat` (访问 http://127.0.0.1:8001)
+
+希望这份指南能帮你快速上手！如有疑问，随时交流。

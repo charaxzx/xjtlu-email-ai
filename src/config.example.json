@@ -1,0 +1,22 @@
+{
+  "ai": {
+    "base_url": "https://api.openai.com/v1",
+    "api_key": "YOUR_API_KEY_HERE",
+    "model": "gpt-4o-mini"
+  },
+  "email": {
+    "url": "https://mail.xjtlu.edu.cn/owa",
+    "login_type": "cookie",
+    "username": "",
+    "password": "",
+    "cookies": [],
+    "cookie_file": "cookies.txt"
+  },
+  "selectors": {
+    "search_box": "input[aria-label='Search']",
+    "email_list": "table[role='presentation'] tr.zA",
+    "email_date": "td.xY span",
+    "email_subject": "div.y6 span",
+    "email_body": "div.gs div.ii"
+  }
+}
