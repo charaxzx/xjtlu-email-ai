@@ -6,419 +6,620 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 邮件智能助手</title>
     <meta name="description" content="XJTLU AI 邮件智能助手 - 自动搜索、提取与总结邮件内容">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         window.onload = function () {
-            if (typeof marked === 'undefined') {
-                window.marked = { parse: (text) => text.replace(/\n/g, '<br>') };
+            if (typeof marked === "undefined") {
+                window.marked = { parse: (text) => text.replace(/\n/g, "<br>") };
             }
         };
     </script>
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-hover: #4f46e5;
-            --primary-glow: rgba(99, 102, 241, 0.35);
-            --primary-light: rgba(99, 102, 241, 0.08);
-            --accent: #ec4899;
-            --success: #10b981;
-            --success-light: rgba(16, 185, 129, 0.1);
-            --warning: #f59e0b;
-            --warning-light: rgba(245, 158, 11, 0.1);
-            --error: #ef4444;
-            --error-light: rgba(239, 68, 68, 0.1);
+            --accent: #0f8f66;
+            --accent-strong: #0b7a57;
+            --accent-soft: rgba(15, 143, 102, 0.12);
+            --accent-border: rgba(15, 143, 102, 0.28);
+            --success: #0f8f66;
+            --warning: #c27a12;
+            --error: #c04b55;
+            --shadow-accent: rgba(15, 143, 102, 0.14);
 
-            --bg-body: #f0f2f5;
-            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --bg-card: rgba(255, 255, 255, 0.97);
-            --bg-card-inner: #ffffff;
-            --bg-input: #f9fafb;
-            --bg-input-focus: #ffffff;
-            --bg-hover: #f3f4f6;
-            --bg-code: #f3f4f6;
+            --bg-body: #eef2ef;
+            --bg-panel: rgba(255, 255, 255, 0.82);
+            --bg-surface: rgba(255, 255, 255, 0.94);
+            --bg-elevated: #ffffff;
+            --bg-soft: #f5f7f4;
+            --bg-soft-strong: #eef2ef;
+            --bg-code: #f2f5f2;
 
-            --border-color: #e5e7eb;
-            --border-focus: var(--primary);
+            --border: rgba(15, 23, 42, 0.08);
+            --border-strong: rgba(15, 23, 42, 0.12);
+            --text-strong: #17211d;
+            --text-main: #31413a;
+            --text-muted: #68766f;
+            --text-faint: #89958f;
+            --text-on-accent: #ffffff;
 
-            --text-primary: #111827;
-            --text-secondary: #4b5563;
-            --text-tertiary: #9ca3af;
-            --text-on-primary: #ffffff;
+            --shadow-panel: 0 20px 60px rgba(23, 33, 29, 0.08);
+            --shadow-card: 0 18px 42px rgba(23, 33, 29, 0.06);
+            --shadow-card-hover: 0 24px 52px rgba(23, 33, 29, 0.1);
+            --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.75);
 
-            --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.08);
-            --shadow-card-hover: 0 16px 48px rgba(0, 0, 0, 0.12);
-            --shadow-btn: 0 4px 14px rgba(99, 102, 241, 0.35);
-            --shadow-btn-hover: 0 8px 25px rgba(99, 102, 241, 0.45);
+            --radius-xl: 32px;
+            --radius-lg: 24px;
+            --radius-md: 18px;
+            --radius-sm: 14px;
+            --radius-xs: 10px;
 
-            --radius-xl: 20px;
-            --radius-lg: 16px;
-            --radius-md: 12px;
-            --radius-sm: 8px;
-
-            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-fast: 0.18s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         [data-theme="dark"] {
-            --bg-body: #0f1117;
-            --bg-gradient: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
-            --bg-card: rgba(30, 32, 44, 0.95);
-            --bg-card-inner: #1a1c2e;
-            --bg-input: #252738;
-            --bg-input-focus: #2d2f44;
-            --bg-hover: #2a2c40;
-            --bg-code: #252738;
+            --accent: #2ab081;
+            --accent-strong: #1c9a6d;
+            --accent-soft: rgba(42, 176, 129, 0.14);
+            --accent-border: rgba(42, 176, 129, 0.26);
+            --success: #2ab081;
+            --warning: #d89b2f;
+            --error: #d3656f;
+            --shadow-accent: rgba(42, 176, 129, 0.14);
 
-            --border-color: #374151;
-            --border-focus: #818cf8;
+            --bg-body: #0f1412;
+            --bg-panel: rgba(18, 24, 21, 0.88);
+            --bg-surface: rgba(21, 28, 24, 0.95);
+            --bg-elevated: #18211d;
+            --bg-soft: #141b17;
+            --bg-soft-strong: #111814;
+            --bg-code: #111814;
 
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --text-tertiary: #64748b;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.12);
+            --text-strong: #f2f6f3;
+            --text-main: #ced8d1;
+            --text-muted: #95a39b;
+            --text-faint: #6d7b73;
+            --text-on-accent: #ffffff;
 
-            --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.4);
-            --shadow-card-hover: 0 16px 48px rgba(0, 0, 0, 0.5);
-            --shadow-btn: 0 4px 14px rgba(99, 102, 241, 0.25);
-            --shadow-btn-hover: 0 8px 25px rgba(99, 102, 241, 0.4);
-
-            --primary-light: rgba(99, 102, 241, 0.15);
-            --success-light: rgba(16, 185, 129, 0.15);
-            --warning-light: rgba(245, 158, 11, 0.15);
-            --error-light: rgba(239, 68, 68, 0.15);
+            --shadow-panel: 0 24px 70px rgba(0, 0, 0, 0.28);
+            --shadow-card: 0 20px 48px rgba(0, 0, 0, 0.24);
+            --shadow-card-hover: 0 26px 56px rgba(0, 0, 0, 0.3);
+            --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
         }
 
-        *,
-        *::before,
-        *::after {
+        * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
 
+        html {
+            color-scheme: light;
+        }
+
+        html[data-theme="dark"] {
+            color-scheme: dark;
+        }
+
         body {
-            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-gradient);
-            background-attachment: fixed;
+            font-family: "Outfit", "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(15, 143, 102, 0.12), transparent 35%),
+                radial-gradient(circle at bottom right, rgba(15, 143, 102, 0.08), transparent 28%),
+                var(--bg-body);
+            color: var(--text-main);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 32px 20px 60px;
-            color: var(--text-primary);
+            min-height: 100dvh;
+            padding: 28px 18px 40px;
             transition: background var(--transition), color var(--transition);
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 28px 28px;
+            opacity: 0.22;
+            z-index: 0;
+        }
+
+        .page-shell {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
         }
 
         .container {
-            background: var(--bg-card);
-            padding: 0;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
             border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-card);
-            width: 100%;
-            max-width: 880px;
-            -webkit-backdrop-filter: blur(20px);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-color);
-            position: relative;
-            transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+            box-shadow: var(--shadow-panel);
+            -webkit-backdrop-filter: blur(24px);
+            backdrop-filter: blur(24px);
             overflow: hidden;
         }
 
-        /* ====== Header ====== */
-        .app-header {
-            padding: 28px 40px 24px;
-            border-bottom: 1px solid var(--border-color);
-            background: var(--bg-card-inner);
-        }
-
-        .header-top {
+        .topbar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 20px;
+            gap: 18px;
+            padding: 22px 28px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent);
         }
 
-        .header-actions {
+        .brand-stack {
             display: flex;
-            gap: 8px;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 0;
+        }
+
+        .eyebrow {
+            font-size: 0.74rem;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+            font-weight: 600;
+        }
+
+        .brand-title {
+            font-size: 1.08rem;
+            color: var(--text-strong);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .brand-subtitle {
+            font-size: 0.84rem;
+            color: var(--text-muted);
+        }
+
+        .topbar-actions {
+            display: flex;
             flex-wrap: wrap;
             justify-content: flex-end;
+            gap: 10px;
         }
 
-        .icon-btn {
-            background: var(--bg-input);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            padding: 7px 14px;
-            font-size: 12.5px;
-            font-weight: 500;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all var(--transition);
+        .action-chip,
+        .action-link {
+            appearance: none;
+            border: 1px solid var(--border);
+            background: var(--bg-surface);
+            color: var(--text-main);
+            border-radius: 999px;
+            padding: 10px 14px;
             display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            text-decoration: none;
-            white-space: nowrap;
-            font-family: inherit;
-        }
-
-        .icon-btn:hover {
-            background: var(--primary-light);
-            border-color: var(--primary);
-            color: var(--primary);
-            transform: translateY(-1px);
-        }
-
-        .hero {
-            text-align: center;
-        }
-
-        .hero h1 {
-            font-weight: 800;
-            font-size: 2rem;
-            letter-spacing: -0.03em;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 6px;
-            line-height: 1.2;
-        }
-
-        .hero-subtitle {
-            color: var(--text-tertiary);
-            font-size: 0.88rem;
-            font-weight: 400;
-        }
-
-        /* ====== Cookie Status Pill ====== */
-        .cookie-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            transition: all var(--transition);
-            background: var(--bg-input);
-            color: var(--text-tertiary);
-            border: 1px solid var(--border-color);
-        }
-
-        .cookie-pill.ok {
-            background: var(--success-light);
-            color: var(--success);
-            border-color: var(--success);
-        }
-
-        .cookie-pill.bad {
-            background: var(--error-light);
-            color: var(--error);
-            border-color: var(--error);
-        }
-
-        .cookie-pill.warn {
-            background: var(--warning-light);
-            color: var(--warning);
-            border-color: var(--warning);
-        }
-
-        /* ====== Main Content ====== */
-        .main-content {
-            padding: 32px 40px;
-        }
-
-        /* ====== Welcome Banner ====== */
-        .welcome-banner {
-            padding: 14px 20px;
-            border-radius: var(--radius-sm);
-            margin-bottom: 24px;
-            font-size: 0.88rem;
-            font-weight: 500;
-            display: flex;
             align-items: center;
             gap: 10px;
-            animation: fadeInDown 0.4s ease-out;
-            position: relative;
-        }
-
-        .welcome-banner .banner-close {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: inherit;
-            opacity: 0.5;
+            font: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
             cursor: pointer;
-            font-size: 16px;
-            padding: 4px;
-            line-height: 1;
-            transition: opacity var(--transition-fast);
+            transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+            box-shadow: var(--shadow-inset);
         }
 
-        .welcome-banner .banner-close:hover {
-            opacity: 1;
+        .action-chip:hover,
+        .action-link:hover {
+            transform: translateY(-1px);
+            border-color: var(--accent-border);
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+        }
+
+        .action-chip:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .chip-mark {
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            background: var(--bg-soft-strong);
+            border: 1px solid var(--border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: var(--text-faint);
+            flex-shrink: 0;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(0, 1.02fr) minmax(360px, 0.98fr);
+            gap: 18px;
+            padding: 24px 28px 28px;
+            align-items: start;
+        }
+
+        .panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card), var(--shadow-inset);
+        }
+
+        .hero-panel {
+            padding: 28px;
+            display: grid;
+            gap: 18px;
+            min-height: 300px;
+        }
+
+        .hero-copy {
+            display: grid;
+            gap: 20px;
+            align-content: start;
+        }
+
+        .hero-title-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .hero-copy h1 {
+            font-size: clamp(2.4rem, 5vw, 5.4rem);
+            line-height: 0.9;
+            letter-spacing: -0.06em;
+            color: var(--text-strong);
+            max-width: 100%;
+            flex: 1 1 240px;
+            min-width: 0;
+        }
+
+        /* 旧版迁移或自定义 HTML 中仍可使用 .hero-title-accent */
+        .hero-copy h1.hero-title-custom .hero-title-accent {
+            color: var(--accent);
+        }
+
+        .hero-edit-btn {
+            flex-shrink: 0;
+            margin-top: 0.4em;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-copy p {
+            max-width: 50ch;
+            font-size: 0.98rem;
+            line-height: 1.75;
+            color: var(--text-main);
+        }
+
+        .hero-note {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            width: fit-content;
+            font-size: 0.82rem;
+        }
+
+        .hero-note .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 0 6px rgba(15, 143, 102, 0.1);
+            animation: breathing 2s ease-in-out infinite;
+        }
+
+        @keyframes breathing {
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+
+            50% {
+                transform: scale(1.15);
+                opacity: 1;
+            }
+        }
+
+        .hero-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .hero-meta-item {
+            padding: 10px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--bg-soft);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .mono {
+            font-family: "IBM Plex Mono", monospace;
+        }
+
+        .command-panel {
+            padding: 24px;
+            display: grid;
+            gap: 16px;
+            align-content: start;
+        }
+
+        .right-stack {
+            display: grid;
+            gap: 18px;
+        }
+
+        .cookie-panel {
+            padding: 20px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .cookie-panel-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .cookie-editor textarea {
+            width: 100%;
+            min-height: 230px;
+            border: 1px solid var(--border);
+            background: var(--bg-elevated);
+            color: var(--text-strong);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 0.82rem;
+            line-height: 1.7;
+            resize: vertical;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+            box-shadow: var(--shadow-inset);
+        }
+
+        .cookie-editor textarea:focus {
+            outline: none;
+            border-color: var(--accent-border);
+            box-shadow: 0 0 0 4px rgba(15, 143, 102, 0.1);
+            background: var(--bg-surface);
+        }
+
+        .cookie-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .welcome-slot {
+            min-height: 0;
+        }
+
+        .welcome-banner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            padding: 14px 44px 14px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: var(--bg-soft);
+            color: var(--text-main);
+            animation: fadeInDown 0.35s ease-out;
         }
 
         .welcome-banner.info {
-            background: var(--primary-light);
-            color: var(--primary);
-            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-color: var(--accent-border);
+            background: var(--accent-soft);
+            color: var(--accent-strong);
         }
 
         .welcome-banner.reminder {
-            background: var(--warning-light);
-            color: #92400e;
-            border: 1px solid rgba(245, 158, 11, 0.25);
-        }
-
-        [data-theme="dark"] .welcome-banner.reminder {
+            background: rgba(194, 122, 18, 0.08);
+            border-color: rgba(194, 122, 18, 0.2);
             color: var(--warning);
         }
 
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .banner-close {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 999px;
+            background: transparent;
+            color: currentColor;
+            cursor: pointer;
+            opacity: 0.55;
+            transition: opacity var(--transition-fast), background var(--transition-fast);
         }
 
-        /* ====== Input Groups ====== */
+        .banner-close:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.06);
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .command-header {
+            display: grid;
+            gap: 10px;
+        }
+
+        .command-header h2 {
+            font-size: 1.5rem;
+            color: var(--text-strong);
+            font-weight: 700;
+            letter-spacing: -0.04em;
+        }
+
+        .command-header p {
+            color: var(--text-muted);
+            line-height: 1.7;
+            font-size: 0.92rem;
+        }
+
         .input-section {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-            margin-bottom: 24px;
+            display: grid;
+            gap: 14px;
         }
 
         .input-group {
-            position: relative;
+            display: grid;
+            gap: 7px;
         }
 
         .input-group label {
-            display: block;
-            margin-bottom: 7px;
+            font-size: 0.82rem;
             font-weight: 600;
-            color: var(--text-secondary);
-            font-size: 0.88rem;
-            letter-spacing: 0.01em;
+            color: var(--text-main);
         }
 
         .input-wrapper {
             position: relative;
-            display: flex;
-            align-items: center;
         }
 
         .input-icon {
             position: absolute;
+            top: 16px;
             left: 14px;
-            font-size: 16px;
-            pointer-events: none;
-            z-index: 1;
-            opacity: 0.6;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 0 6px rgba(15, 143, 102, 0.08);
         }
 
         .input-wrapper input[type="text"],
-        .input-wrapper textarea {
+        .input-wrapper input[type="number"],
+        .input-wrapper textarea,
+        .settings-form input[type="text"],
+        .settings-form input[type="password"],
+        .settings-form textarea {
             width: 100%;
-            padding: 13px 16px 13px 42px;
-            border: 2px solid var(--border-color);
+            border: 1px solid var(--border);
+            background: var(--bg-elevated);
+            color: var(--text-strong);
             border-radius: var(--radius-sm);
-            font-size: 14.5px;
-            font-family: inherit;
-            background: var(--bg-input);
-            color: var(--text-primary);
-            transition: all var(--transition);
+            padding: 14px 16px 14px 38px;
+            font: inherit;
+            font-size: 0.94rem;
+            line-height: 1.5;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+            box-shadow: var(--shadow-inset);
+        }
+
+        .settings-form input[type="text"],
+        .settings-form input[type="password"],
+        .settings-form textarea {
+            padding-left: 14px;
         }
 
         .input-wrapper textarea {
+            min-height: 132px;
             resize: vertical;
-            min-height: 48px;
-            max-height: 120px;
-            line-height: 1.5;
-            field-sizing: content;
         }
 
         .input-wrapper input[type="text"]:focus,
-        .input-wrapper textarea:focus {
-            border-color: var(--border-focus);
-            box-shadow: 0 0 0 3px var(--primary-glow);
+        .input-wrapper input[type="number"]:focus,
+        .input-wrapper textarea:focus,
+        .settings-form input[type="text"]:focus,
+        .settings-form input[type="password"]:focus,
+        .settings-form textarea:focus {
             outline: none;
-            background: var(--bg-input-focus);
+            border-color: var(--accent-border);
+            box-shadow: 0 0 0 4px rgba(15, 143, 102, 0.1);
+            background: var(--bg-surface);
         }
 
-        .input-hint {
+        .input-hint,
+        .field-note {
             font-size: 0.76rem;
-            color: var(--text-tertiary);
-            margin-top: 4px;
+            color: var(--text-faint);
+            line-height: 1.6;
         }
 
-        /* ====== Primary Button ====== */
+        .command-actions {
+            display: grid;
+            gap: 12px;
+        }
+
         .btn-primary {
             width: 100%;
-            background: linear-gradient(135deg, var(--primary), #8b5cf6);
-            color: var(--text-on-primary);
             border: none;
-            padding: 15px;
-            border-radius: var(--radius-sm);
+            border-radius: 18px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: var(--text-on-accent);
+            font: inherit;
+            font-weight: 600;
+            font-size: 0.96rem;
+            padding: 15px 20px;
             cursor: pointer;
-            font-size: 16px;
-            font-weight: 700;
-            font-family: inherit;
-            letter-spacing: 0.02em;
-            transition: all var(--transition);
-            box-shadow: var(--shadow-btn);
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-primary::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
-            transform: translateX(-100%);
-            transition: transform 0.6s ease;
-        }
-
-        .btn-primary:hover::after {
-            transform: translateX(100%);
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast), filter var(--transition-fast);
+            box-shadow: 0 16px 32px -18px var(--shadow-accent);
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-btn-hover);
+            transform: translateY(-1px);
+            filter: brightness(1.02);
         }
 
         .btn-primary:active {
-            transform: translateY(0);
+            transform: translateY(0) scale(0.98);
         }
 
         .btn-primary:disabled {
-            background: var(--text-tertiary);
             cursor: not-allowed;
+            filter: grayscale(0.12);
+            opacity: 0.78;
             transform: none;
-            box-shadow: none;
-        }
-
-        .btn-primary:disabled::after {
-            display: none;
         }
 
         .btn-primary .spinner {
             display: none;
-            width: 18px;
-            height: 18px;
-            border: 2.5px solid rgba(255,255,255,0.3);
-            border-top-color: white;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #ffffff;
             border-radius: 50%;
             animation: spin 0.7s linear infinite;
         }
@@ -428,423 +629,564 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
-        /* ====== Search History ====== */
-        .history-section {
-            margin-top: 24px;
+        .command-footnote {
+            display: grid;
+            gap: 10px;
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: var(--bg-soft);
         }
 
-        .section-header {
+        .command-footnote-title {
+            font-size: 0.82rem;
+            color: var(--text-strong);
+            font-weight: 600;
+        }
+
+        .command-footnote-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .command-footnote-item {
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+        }
+
+        .command-footnote-item strong {
+            display: block;
+            color: var(--text-strong);
+            margin-bottom: 4px;
+            font-size: 0.82rem;
+        }
+
+        .command-footnote-item span {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+
+        .history-panel {
+            padding: 20px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .panel-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 10px;
+            gap: 12px;
         }
 
-        .section-title {
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: var(--text-tertiary);
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        .panel-title {
+            display: grid;
+            gap: 3px;
+        }
+
+        .panel-title small {
+            font-size: 0.74rem;
+            letter-spacing: 0.12em;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            color: var(--text-faint);
         }
 
-        .btn-text {
-            background: none;
-            border: none;
-            color: var(--text-tertiary);
-            font-size: 0.76rem;
+        .panel-title h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-strong);
+            letter-spacing: -0.03em;
+        }
+
+        .btn-text,
+        .btn-clear-results,
+        .btn-copy,
+        .btn-secondary,
+        .btn-save {
+            appearance: none;
+            border: 1px solid var(--border);
+            background: var(--bg-elevated);
+            color: var(--text-main);
+            border-radius: 999px;
+            padding: 9px 14px;
+            font: inherit;
+            font-size: 0.82rem;
+            font-weight: 500;
             cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 4px;
-            transition: all var(--transition);
-            font-family: inherit;
+            transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
         }
 
-        .btn-text:hover {
-            color: var(--error);
-            background: var(--error-light);
+        .btn-text:hover,
+        .btn-clear-results:hover,
+        .btn-copy:hover,
+        .btn-secondary:hover {
+            transform: translateY(-1px);
+            border-color: var(--accent-border);
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+        }
+
+        .btn-save {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--text-on-accent);
+        }
+
+        .btn-save:hover {
+            transform: translateY(-1px);
+            background: var(--accent-strong);
+            border-color: var(--accent-strong);
+        }
+
+        .btn-copy.copied {
+            background: var(--accent-soft);
+            border-color: var(--accent-border);
+            color: var(--accent-strong);
         }
 
         .history-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 10px;
         }
 
         .history-chip {
-            background: var(--bg-input);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all var(--transition);
+            border: 1px solid var(--border);
+            background: var(--bg-soft);
+            color: var(--text-main);
+            border-radius: 999px;
+            padding: 10px 14px;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            max-width: 260px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            gap: 8px;
+            cursor: pointer;
+            transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+            max-width: 100%;
         }
 
         .history-chip:hover {
-            background: var(--primary);
-            color: var(--text-on-primary);
-            border-color: var(--primary);
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px var(--primary-glow);
+            border-color: var(--accent-border);
+            background: var(--accent-soft);
+            color: var(--accent-strong);
         }
 
-        .history-chip .chip-keyword { font-weight: 600; }
-        .history-chip .chip-time { font-size: 0.7rem; opacity: 0.7; }
+        .history-chip .chip-keyword {
+            font-weight: 600;
+        }
+
+        .history-chip .chip-time {
+            color: var(--text-faint);
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
 
         .history-empty {
-            color: var(--text-tertiary);
-            font-size: 0.8rem;
-            font-style: italic;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-faint);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            background: transparent;
         }
 
-        /* ====== Progress ====== */
+        .status-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .cookie-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            font-size: 0.82rem;
+            font-weight: 500;
+        }
+
+        .cookie-pill::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-faint);
+        }
+
+        .cookie-pill.ok {
+            color: var(--success);
+            border-color: rgba(15, 143, 102, 0.25);
+            background: rgba(15, 143, 102, 0.08);
+        }
+
+        .cookie-pill.ok::before {
+            background: var(--success);
+        }
+
+        .cookie-pill.bad {
+            color: var(--error);
+            border-color: rgba(192, 75, 85, 0.22);
+            background: rgba(192, 75, 85, 0.08);
+        }
+
+        .cookie-pill.bad::before {
+            background: var(--error);
+        }
+
+        .cookie-pill.warn {
+            color: var(--warning);
+            border-color: rgba(194, 122, 18, 0.22);
+            background: rgba(194, 122, 18, 0.08);
+        }
+
+        .cookie-pill.warn::before {
+            background: var(--warning);
+        }
+
         .progress-container {
-            margin: 0;
-            padding: 24px 40px;
-            background: var(--bg-card-inner);
-            border-top: 1px solid var(--border-color);
-            border-bottom: 1px solid var(--border-color);
-            overflow: hidden;
+            margin: 0 28px 0;
+            padding: 0 24px;
             max-height: 0;
             opacity: 0;
-            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-                        opacity 0.3s ease,
-                        padding 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            padding-top: 0;
-            padding-bottom: 0;
+            overflow: hidden;
+            transition: max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, margin-bottom 0.25s ease, padding var(--transition);
+            border-radius: var(--radius-lg);
+            background: var(--bg-surface);
+            border: 1px solid transparent;
         }
 
         .progress-container.visible {
-            max-height: 200px;
+            max-height: 220px;
             opacity: 1;
-            padding-top: 24px;
-            padding-bottom: 24px;
+            padding: 22px 24px;
+            margin-bottom: 28px;
+            border-color: var(--border);
+            box-shadow: var(--shadow-card), var(--shadow-inset);
         }
 
         .progress-steps {
-            display: flex;
-            justify-content: space-between;
             position: relative;
-            margin-bottom: 18px;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
         }
 
         .progress-steps::before {
-            content: '';
+            content: "";
             position: absolute;
+            left: calc(12.5% + 18px);
+            right: calc(12.5% + 18px);
             top: 18px;
-            left: 16%;
-            right: 16%;
-            height: 3px;
-            background: var(--border-color);
-            z-index: 0;
-            border-radius: 2px;
+            height: 1px;
+            background: var(--border-strong);
         }
 
         .progress-bar-fill {
             position: absolute;
+            left: calc(12.5% + 18px);
             top: 18px;
-            left: 16%;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-            z-index: 1;
-            border-radius: 2px;
-            transition: width 0.6s ease;
+            height: 1px;
             width: 0%;
+            background: var(--accent);
+            transition: width 0.4s ease;
         }
 
         .step {
+            position: relative;
+            z-index: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
-            position: relative;
-            z-index: 2;
-            flex: 1;
+            gap: 10px;
+            text-align: center;
         }
 
         .step-circle {
             width: 36px;
             height: 36px;
-            border-radius: 50%;
-            background: var(--bg-card-inner);
-            border: 3px solid var(--border-color);
-            display: flex;
+            border-radius: 999px;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 15px;
-            transition: all 0.4s ease;
-            margin-bottom: 7px;
-        }
-
-        .step.active .step-circle {
-            border-color: var(--primary);
-            background: var(--primary);
-            box-shadow: 0 0 20px var(--primary-glow);
-            animation: stepPulse 1.5s ease-in-out infinite;
-        }
-
-        .step.completed .step-circle {
-            border-color: var(--success);
-            background: var(--success);
+            font-size: 0.78rem;
+            font-weight: 700;
+            border: 1px solid var(--border);
+            background: var(--bg-elevated);
+            color: var(--text-faint);
+            transition: all var(--transition-fast);
         }
 
         .step-label {
-            font-size: 0.74rem;
-            font-weight: 600;
-            color: var(--text-tertiary);
-            text-align: center;
-            transition: color var(--transition);
+            font-size: 0.76rem;
+            color: var(--text-faint);
         }
 
-        .step.active .step-label { color: var(--primary); }
-        .step.completed .step-label { color: var(--success); }
+        .step.active .step-circle {
+            color: var(--text-on-accent);
+            background: var(--accent);
+            border-color: var(--accent);
+            transform: scale(1.04);
+        }
+
+        .step.active .step-label {
+            color: var(--accent-strong);
+        }
+
+        .step.completed .step-circle {
+            color: var(--success);
+            border-color: rgba(15, 143, 102, 0.26);
+            background: rgba(15, 143, 102, 0.08);
+        }
+
+        .step.completed .step-label {
+            color: var(--success);
+        }
 
         .progress-detail {
-            text-align: center;
-            color: var(--text-secondary);
             font-size: 0.88rem;
-            font-weight: 500;
-            animation: pulse 2s infinite;
+            color: var(--text-main);
         }
 
-        @keyframes stepPulse {
-            0%, 100% { box-shadow: 0 0 10px var(--primary-glow); }
-            50% { box-shadow: 0 0 25px var(--primary-glow); }
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 0.7; }
-            50% { opacity: 1; }
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ====== Results ====== */
         .results-container {
-            padding: 32px 40px;
-            border-top: 1px solid var(--border-color);
+            padding: 0 28px 28px;
         }
 
-        .results-hidden { display: none; }
+        .results-hidden {
+            display: none;
+        }
+
+        .results-shell {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card), var(--shadow-inset);
+            overflow: hidden;
+        }
 
         .results-history-header {
             display: flex;
-            align-items: center;
+            align-items: flex-end;
             justify-content: space-between;
-            margin-bottom: 20px;
+            gap: 14px;
+            padding: 24px 24px 18px;
+            border-bottom: 1px solid var(--border);
         }
 
         .results-history-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            display: grid;
+            gap: 4px;
         }
 
-        .btn-clear-results {
-            background: var(--bg-input);
-            border: 1px solid var(--border-color);
-            color: var(--text-tertiary);
-            padding: 6px 14px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all var(--transition);
-            font-family: inherit;
+        .results-history-title small {
+            font-size: 0.74rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-faint);
         }
 
-        .btn-clear-results:hover {
-            color: var(--error);
-            background: var(--error-light);
-            border-color: var(--error);
+        .results-history-title h2 {
+            font-size: 1.2rem;
+            color: var(--text-strong);
+            letter-spacing: -0.04em;
+        }
+
+        .results-entries {
+            padding: 24px;
+            display: grid;
+            gap: 18px;
         }
 
         .result-entry {
-            background: var(--bg-card-inner);
-            border-radius: var(--radius-md);
-            padding: 0;
-            margin-bottom: 16px;
-            border: 1px solid var(--border-color);
-            transition: all var(--transition);
-            animation: fadeInUp 0.5s ease-out;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--bg-elevated);
             overflow: hidden;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+            animation: fadeInUp 0.35s ease-out;
         }
 
         .result-entry:hover {
+            transform: translateY(-2px);
             box-shadow: var(--shadow-card-hover);
-            border-color: rgba(99, 102, 241, 0.2);
+            border-color: var(--accent-border);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
         }
 
         .result-meta {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 10px;
-            padding: 16px 20px;
-            background: var(--bg-input);
-            border-bottom: 1px solid var(--border-color);
+            padding: 20px;
+            background: var(--bg-soft);
+            border-right: 1px solid var(--border);
+            display: grid;
+            align-content: start;
+            gap: 12px;
         }
 
         .result-meta-tag {
-            background: linear-gradient(135deg, var(--primary), #8b5cf6);
-            color: var(--text-on-primary);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.76rem;
-            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            border: 1px solid var(--accent-border);
+            font-size: 0.8rem;
+            font-weight: 600;
         }
 
         .result-meta-time {
-            color: var(--text-tertiary);
-            font-size: 0.78rem;
+            font-size: 0.8rem;
+            color: var(--text-faint);
         }
 
         .result-meta-instruction {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            font-style: italic;
-            flex-basis: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            line-height: 1.7;
         }
 
         .result-body {
             padding: 20px;
+            display: grid;
+            gap: 18px;
         }
 
-        .result-summary-section {
-            margin-bottom: 16px;
-        }
-
-        .card-header {
+        .section-line {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 14px;
+            gap: 12px;
             padding-bottom: 10px;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border);
         }
 
         .card-title {
             font-size: 1rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-copy {
-            background: var(--bg-input);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            padding: 5px 12px;
-            font-size: 11.5px;
+            color: var(--text-strong);
             font-weight: 600;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-family: inherit;
+            letter-spacing: -0.03em;
         }
 
-        .btn-copy:hover {
-            background: var(--primary-light);
-            color: var(--primary);
-            border-color: var(--primary);
-        }
-
-        .btn-copy.copied {
-            background: var(--success-light);
-            color: #065f46;
-            border-color: var(--success);
-        }
-
-        /* Summary Markdown Styles */
         .summary-content {
-            line-height: 1.8;
-            color: var(--text-secondary);
-            font-size: 0.93rem;
+            color: var(--text-main);
+            line-height: 1.85;
+            font-size: 0.95rem;
         }
 
         .summary-content h1,
         .summary-content h2,
         .summary-content h3 {
-            margin-top: 1.2em;
-            margin-bottom: 0.4em;
-            color: var(--text-primary);
+            color: var(--text-strong);
+            margin: 1.15em 0 0.4em;
+            letter-spacing: -0.03em;
         }
 
         .summary-content ul,
         .summary-content ol {
-            padding-left: 20px;
-            margin-bottom: 0.8em;
+            margin: 0.8em 0;
+            padding-left: 1.3em;
         }
 
-        .summary-content li { margin-bottom: 0.4em; }
-        .summary-content strong { color: var(--primary); }
+        .summary-content li {
+            margin-bottom: 0.35em;
+        }
+
+        .summary-content strong {
+            color: var(--accent-strong);
+        }
 
         .summary-content code {
             background: var(--bg-code);
+            border: 1px solid var(--border);
             padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.86em;
+            border-radius: 8px;
+            font-size: 0.84em;
         }
 
         .typewriter-cursor {
             display: inline-block;
             width: 2px;
-            height: 1.1em;
-            background: var(--primary);
+            height: 1em;
+            vertical-align: text-bottom;
+            background: var(--accent);
             margin-left: 2px;
             animation: blink 0.8s step-end infinite;
-            vertical-align: text-bottom;
         }
 
         @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
         }
 
-        /* Email List - Collapsible */
-        .result-email-section {}
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            border: 1px solid var(--accent-border);
+            font-size: 0.74rem;
+            font-weight: 600;
+        }
+
+        .result-email-section {
+            display: grid;
+            gap: 10px;
+        }
 
         .email-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
             cursor: pointer;
+            -webkit-user-select: none;
             user-select: none;
-            padding: 0;
         }
 
-        .email-toggle .toggle-arrow {
-            transition: transform var(--transition);
-            font-size: 12px;
-            color: var(--text-tertiary);
+        .toggle-arrow {
+            font-size: 0.78rem;
+            color: var(--text-faint);
+            transition: transform var(--transition-fast);
         }
 
         .email-toggle.collapsed .toggle-arrow {
@@ -853,8 +1195,8 @@
 
         .email-list-wrapper {
             overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            max-height: 400px;
+            max-height: 360px;
+            transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .email-list-wrapper.collapsed {
@@ -862,187 +1204,178 @@
         }
 
         .email-list {
-            max-height: 300px;
+            display: grid;
+            gap: 8px;
+            max-height: 320px;
             overflow-y: auto;
-            padding-top: 4px;
+            padding-right: 2px;
         }
 
         .email-item {
-            padding: 10px 14px;
-            border-radius: 6px;
-            transition: all var(--transition-fast);
-            margin-bottom: 2px;
-            display: flex;
-            align-items: flex-start;
+            display: grid;
+            grid-template-columns: 28px minmax(0, 1fr);
             gap: 12px;
+            align-items: start;
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg-soft);
+            transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
         }
 
         .email-item:hover {
-            background: var(--bg-hover);
             transform: translateX(4px);
+            border-color: var(--accent-border);
+            background: var(--bg-elevated);
         }
 
         .email-item-num {
-            flex-shrink: 0;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: var(--primary-light);
-            color: var(--primary);
-            font-size: 0.72rem;
-            font-weight: 700;
-            display: flex;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            border: 1px solid var(--accent-border);
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin-top: 2px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            line-height: 1;
         }
 
-        .email-item-content { flex: 1; min-width: 0; }
+        .email-item-content {
+            min-width: 0;
+        }
 
         .email-subject {
+            color: var(--text-strong);
             font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 3px;
-            font-size: 0.9rem;
+            font-size: 0.92rem;
+            margin-bottom: 4px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
         .email-date {
-            color: var(--text-tertiary);
             font-size: 0.78rem;
+            color: var(--text-faint);
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.03em;
-        }
-
-        .status-success {
-            background: var(--success-light);
-            color: var(--success);
-        }
-
-        .status-error {
-            background: var(--error-light);
-            color: var(--error);
-        }
-
-        /* ====== Footer ====== */
-        .app-footer {
-            padding: 16px 40px;
-            border-top: 1px solid var(--border-color);
+        .empty-box {
+            padding: 18px;
+            border-radius: var(--radius-sm);
+            border: 1px dashed var(--border);
+            color: var(--text-faint);
+            background: transparent;
             text-align: center;
-            color: var(--text-tertiary);
-            font-size: 0.76rem;
         }
 
-        .app-footer a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        .app-footer a:hover {
-            text-decoration: underline;
-        }
-
-        /* ====== Modal ====== */
         .modal {
             display: none;
             position: fixed;
+            inset: 0;
             z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background: rgba(0, 0, 0, 0.5);
-            -webkit-backdrop-filter: blur(8px);
-            backdrop-filter: blur(8px);
+            background: rgba(9, 14, 11, 0.52);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            padding: 24px;
         }
 
         .modal-content {
-            background: var(--bg-card);
-            margin: 4vh auto;
-            padding: 32px;
-            border: 1px solid var(--border-color);
-            width: 92%;
-            max-width: 720px;
+            width: 100%;
+            max-width: 760px;
+            max-height: calc(100vh - 48px);
+            max-height: calc(100dvh - 48px);
+            margin: 0 auto;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
             border-radius: var(--radius-xl);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            position: relative;
-            animation: fadeInUp 0.3s ease;
-            color: var(--text-primary);
-            max-height: 90vh;
+            box-shadow: var(--shadow-panel);
             overflow-y: auto;
+            padding: 28px;
+            position: relative;
+            animation: fadeInUp 0.25s ease-out;
         }
 
         .close {
-            color: var(--text-tertiary);
             position: absolute;
-            right: 20px;
-            top: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: color var(--transition);
+            top: 18px;
+            right: 18px;
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            border: none;
+            background: transparent;
+            color: var(--text-faint);
+            font-size: 1.35rem;
             line-height: 1;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
+            cursor: pointer;
+            transition: background var(--transition-fast), color var(--transition-fast);
         }
 
         .close:hover {
-            color: var(--text-primary);
-            background: var(--bg-hover);
+            background: var(--bg-soft);
+            color: var(--text-strong);
         }
 
         .modal-heading {
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 2px solid var(--border-color);
-            font-size: 1.2rem;
             padding-right: 40px;
+            margin-bottom: 18px;
+            color: var(--text-strong);
+            font-size: 1.2rem;
+            letter-spacing: -0.04em;
         }
 
-        /* ====== Settings Modal ====== */
-        .settings-form {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
+        .tutorial-section {
+            padding: 18px 0;
+            border-top: 1px solid var(--border);
+            display: grid;
+            gap: 10px;
         }
 
-        .settings-form .input-group label {
-            margin-bottom: 6px;
+        .tutorial-section:first-of-type {
+            border-top: none;
+            padding-top: 6px;
         }
 
-        .settings-form input[type="text"],
-        .settings-form input[type="password"] {
-            width: 100%;
-            padding: 12px 14px;
-            border: 2px solid var(--border-color);
+        .tutorial-section h3 {
+            color: var(--text-strong);
+            font-size: 1rem;
+            letter-spacing: -0.03em;
+        }
+
+        .tutorial-section p,
+        .tutorial-section li {
+            color: var(--text-main);
+            line-height: 1.75;
+            font-size: 0.92rem;
+        }
+
+        .tutorial-section ol,
+        .tutorial-section ul {
+            padding-left: 1.1rem;
+            display: grid;
+            gap: 6px;
+        }
+
+        .code-block {
+            display: block;
+            border: 1px solid var(--border);
+            background: var(--bg-code);
             border-radius: var(--radius-sm);
-            font-size: 14px;
-            font-family: inherit;
-            background: var(--bg-input);
-            color: var(--text-primary);
-            transition: all var(--transition);
+            padding: 14px 16px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: var(--accent-strong);
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 0.84rem;
         }
 
-        .settings-form input[type="text"]:focus,
-        .settings-form input[type="password"]:focus {
-            border-color: var(--border-focus);
-            box-shadow: 0 0 0 3px var(--primary-glow);
-            outline: none;
-            background: var(--bg-input-focus);
+        .settings-form {
+            display: grid;
+            gap: 14px;
         }
 
         .password-wrapper {
@@ -1050,7 +1383,7 @@
         }
 
         .password-wrapper input {
-            padding-right: 44px !important;
+            padding-right: 74px !important;
         }
 
         .password-toggle {
@@ -1058,344 +1391,410 @@
             right: 10px;
             top: 50%;
             transform: translateY(-50%);
-            background: none;
-            border: none;
+            border: 1px solid var(--border);
+            background: var(--bg-soft);
+            color: var(--text-main);
+            border-radius: 999px;
+            padding: 6px 10px;
+            font: inherit;
+            font-size: 0.72rem;
             cursor: pointer;
-            font-size: 16px;
-            padding: 4px;
-            color: var(--text-tertiary);
-            transition: color var(--transition-fast);
+            transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
         }
 
         .password-toggle:hover {
-            color: var(--text-primary);
-        }
-
-        .settings-form textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            font-size: 13px;
-            font-family: 'Fira Code', 'Consolas', monospace;
-            background: var(--bg-input);
-            color: var(--text-primary);
-            transition: all var(--transition);
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        .settings-form textarea:focus {
-            border-color: var(--border-focus);
-            box-shadow: 0 0 0 3px var(--primary-glow);
-            outline: none;
-            background: var(--bg-input-focus);
+            border-color: var(--accent-border);
+            background: var(--accent-soft);
+            color: var(--accent-strong);
         }
 
         details.advanced-settings {
-            background: var(--bg-input);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            padding: 12px 16px;
-            transition: all var(--transition);
+            border: 1px solid var(--border);
+            background: var(--bg-soft);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
         }
 
         details.advanced-settings summary {
-            font-weight: 600;
-            color: var(--text-secondary);
             cursor: pointer;
-            user-select: none;
-            outline: none;
-            font-size: 0.9rem;
+            color: var(--text-main);
+            font-weight: 600;
         }
 
-        details.advanced-settings summary:hover { color: var(--primary); }
-
         details.advanced-settings .input-group {
-            margin-top: 16px;
-            margin-bottom: 0;
+            margin-top: 14px;
         }
 
         .modal-footer {
-            margin-top: 24px;
             display: flex;
             justify-content: flex-end;
             gap: 10px;
+            margin-top: 10px;
         }
 
-        .btn-secondary {
-            background: var(--bg-hover);
-            color: var(--text-secondary);
-            border: 1px solid var(--border-color);
-            padding: 10px 20px;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all var(--transition);
-            font-family: inherit;
-        }
-
-        .btn-secondary:hover {
-            background: var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .btn-save {
-            background: var(--success);
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all var(--transition);
-            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
-            font-family: inherit;
-        }
-
-        .btn-save:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-        }
-
-        /* ====== Tutorial Modal ====== */
-        .tutorial-section {
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .tutorial-section:last-child,
-        .tutorial-section-last {
-            border-bottom: none;
-        }
-
-        .tutorial-section h3 {
-            color: var(--primary);
-            margin-bottom: 10px;
+        .app-footer {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 1rem;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 18px 28px 24px;
+            color: var(--text-faint);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border);
         }
 
-        .tutorial-section p,
-        .tutorial-section li {
-            line-height: 1.7;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-            font-size: 0.92rem;
+        .footer-mark {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .code-block {
-            background: var(--bg-code);
-            padding: 12px 16px;
-            border-radius: var(--radius-sm);
-            font-family: 'Fira Code', 'Consolas', monospace;
-            font-size: 0.85em;
-            color: var(--accent);
-            display: block;
-            margin: 8px 0;
-            white-space: pre-wrap;
-            word-break: break-all;
-            border: 1px solid var(--border-color);
+        .footer-mark::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--accent);
         }
 
-        /* ====== Scrollbar ====== */
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
-
-        /* ====== Responsive ====== */
-        @media (max-width: 640px) {
-            body { padding: 16px 10px 40px; }
-
-            .app-header { padding: 20px 20px 18px; }
-            .main-content { padding: 24px 20px; }
-            .results-container { padding: 24px 20px; }
-            .progress-container.visible { padding-left: 20px; padding-right: 20px; }
-            .app-footer { padding: 14px 20px; }
-
-            .header-top {
-                flex-direction: column;
-                gap: 14px;
-                align-items: stretch;
-            }
-
-            .header-actions {
-                justify-content: center;
-                gap: 6px;
-            }
-
-            .icon-btn {
-                padding: 6px 10px;
-                font-size: 11.5px;
-            }
-
-            .hero h1 { font-size: 1.6rem; }
-
-            .step-label { font-size: 0.66rem; }
-            .step-circle { width: 30px; height: 30px; font-size: 13px; }
-
-            .modal-content {
-                margin: 0;
-                width: 100%;
-                height: 100%;
-                max-height: 100%;
-                border-radius: 0;
-                padding: 24px 20px;
-            }
-
-            .result-body { padding: 16px; }
-            .result-meta { padding: 12px 16px; }
-        }
-
-        /* ====== Toast ====== */
         .toast {
             position: fixed;
-            bottom: 40px;
             left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white;
-            padding: 12px 24px;
-            border-radius: 24px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            z-index: 3000;
-            font-size: 13px;
-            font-weight: 700;
+            bottom: 28px;
+            transform: translateX(-50%) translateY(16px);
+            background: #17211d;
+            color: #ffffff;
+            border-radius: 999px;
+            padding: 11px 16px;
+            font-size: 0.84rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
             opacity: 0;
-            transition: opacity 0.3s ease, transform 0.3s ease;
             pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            z-index: 1300;
         }
 
         .toast.visible {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(104, 118, 111, 0.45);
+            border-radius: 999px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        @media (max-width: 1200px) {
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-panel {
+                grid-template-columns: 1fr;
+                min-height: 0;
+            }
+        }
+
+        @media (max-width: 840px) {
+            body {
+                padding: 14px 10px 28px;
+            }
+
+            .topbar,
+            .workspace,
+            .results-container,
+            .app-footer {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .topbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .topbar-actions {
+                justify-content: flex-start;
+            }
+
+            .hero-stats,
+            .command-footnote-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .progress-container {
+                margin-left: 16px;
+                margin-right: 16px;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .result-meta {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .results-history-header,
+            .app-footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .modal {
+                padding: 0;
+            }
+
+            .modal-content {
+                max-height: 100vh;
+                max-height: 100dvh;
+                border-radius: 0;
+                max-width: none;
+                height: 100%;
+                padding: 24px 16px;
+            }
+
+            .action-chip,
+            .action-link {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .progress-steps {
+                gap: 8px;
+            }
+
+            .step-label {
+                font-size: 0.68rem;
+            }
+        }
+
+        /* 辅助与结构样式类 (用于替换内联样式) */
+        .workspace-left-inner {
+            display: grid;
+            gap: 18px;
+        }
+
+        .hero-copy-inner {
+            display: grid;
+            gap: 20px;
+        }
+
+        .hero-title-group {
+            display: grid;
+            gap: 16px;
+        }
+
+        .modal-content-sm {
+            max-width: 520px;
+        }
+
+        .modal-content-md {
+            max-width: 620px;
+        }
+
+        .modal-description {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.65;
+            margin-bottom: 14px;
+        }
+
+        .modal-footer-spaced {
+            justify-content: space-between !important;
+            flex-wrap: wrap !important;
+        }
+
+        .flex-gap-10 {
+            display: flex;
+            gap: 10px;
+        }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="app-header">
-            <div class="header-top">
-                <div class="hero">
-                    <h1>AI 邮件智能助手</h1>
-                    <p class="hero-subtitle">自动搜索、提取与总结你的 XJTLU 邮件</p>
+    <div class="page-shell">
+        <div class="container">
+            <div class="topbar">
+                <div class="brand-stack">
+                    <div class="eyebrow">XJTLU Mail Console</div>
+                    <div class="brand-title">邮件分析控制台</div>
                 </div>
-                <div class="header-actions">
-                    <button class="icon-btn" id="cookieStatusBtn" onclick="checkCookieStatus()">
-                        <span id="cookieIcon">🍪</span>
-                        <span id="cookieLabel">验证 Cookie</span>
-                    </button>
-                    <a class="icon-btn" href="{{ mail_url }}" target="_blank" rel="noopener noreferrer">
-                        📬 邮箱
+                <div class="topbar-actions">
+                    <a class="action-link" href="{{ mail_url }}" target="_blank" rel="noopener noreferrer">
+                        <span class="chip-mark">OW</span>
+                        <span>打开邮箱</span>
                     </a>
-                    <button class="icon-btn" id="themeToggle" onclick="toggleTheme()">
-                        <span id="themeIcon">🌙</span> <span id="themeLabel">深色</span>
+                    <button class="action-chip" id="themeToggle" onclick="toggleTheme()">
+                        <span class="chip-mark" id="themeIcon">DK</span>
+                        <span id="themeLabel">深色模式</span>
                     </button>
-                    <button class="icon-btn" onclick="openSettingsModal()">⚙️ 配置</button>
-                    <button class="icon-btn" onclick="openModal()">📚 教程</button>
+                    <button class="action-chip" onclick="openSettingsModal()">
+                        <span class="chip-mark">CF</span>
+                        <span>配置</span>
+                    </button>
+                    <button class="action-chip" onclick="openModal()">
+                        <span class="chip-mark">GP</span>
+                        <span>指南</span>
+                    </button>
                 </div>
             </div>
-            <div style="text-align:center; margin-top: 4px;">
-                <span class="cookie-pill" id="cookiePill">未检查</span>
+
+            <div class="workspace">
+                <div class="workspace-left-inner">
+                    <section class="panel hero-panel">
+                        <div class="hero-copy">
+                            <div class="hero-copy-inner">
+                                <div class="hero-title-group">
+                                    <div class="hero-title-row">
+                                        <h1 id="heroTitle" class="hero-title-custom" aria-label="主标语"></h1>
+                                        <button type="button" class="btn-text hero-edit-btn" id="heroEditOpenBtn" title="自定义主标语">编辑标语</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="panel history-panel" id="historySection">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <small>Query Memory</small>
+                                <h3>搜索历史</h3>
+                            </div>
+                            <button class="btn-text" onclick="clearHistory()">清空</button>
+                        </div>
+                        <div class="history-list" id="historyList">
+                            <span class="history-empty">暂无搜索记录</span>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="right-stack">
+                    <section class="panel command-panel">
+                        <div class="welcome-slot" id="welcomeBanner"></div>
+
+                        <div class="command-header">
+                            <h2>输入检索条件和总结意图</h2>
+                        </div>
+
+                        <div class="input-section">
+                            <div class="input-group">
+                                <label for="keyword">搜索关键词</label>
+                                <div class="input-wrapper">
+                                    <span class="input-icon"></span>
+                                    <input type="text" id="keyword" placeholder="输入关键词搜索，或留空查看最新邮件...">
+                                </div>
+                            </div>
+
+                            <div class="input-group">
+                                <label for="instruction">总结指令</label>
+                                <div class="input-wrapper">
+                                    <span class="input-icon"></span>
+                                    <textarea id="instruction" rows="4" placeholder="告诉 AI 如何总结...">请用自然语气总结这些邮件，重点关注活动、课程作业和重要事项。</textarea>
+                                </div>
+                            </div>
+
+                            <div class="input-group">
+                                <label for="emailCount">处理邮件数量</label>
+                                <div class="input-wrapper">
+                                    <span class="input-icon"></span>
+                                    <input type="number" id="emailCount" min="1" max="10" step="1" value="10">
+                                </div>
+                                <div class="input-hint">范围 1-10。LLM 会按每批 3 封并行处理，再做 1 次总汇总。</div>
+                            </div>
+                        </div>
+
+                        <div class="command-actions">
+                            <button class="btn-primary" id="runBtn" onclick="runTask()">
+                                <span class="spinner"></span>
+                                <span class="btn-label">开始智能分析</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section class="panel cookie-panel">
+                        <div class="cookie-panel-top">
+                            <div class="panel-title">
+                                <h3>更新 Cookie</h3>
+                            </div>
+                            <span class="cookie-pill" id="cookiePill">未检查</span>
+                        </div>
+                        <div class="cookie-editor">
+                            <textarea id="emailCookies" placeholder='[{"name": "...", "value": "...", "domain": "..."}]'></textarea>
+                        </div>
+                        <div class="cookie-actions">
+                            <button class="action-chip" id="cookieStatusBtn" onclick="checkCookieStatus()">
+                                <span class="chip-mark" id="cookieIcon">CK</span>
+                                <span id="cookieLabel">检查状态</span>
+                            </button>
+                            <button class="btn-save" type="button" onclick="saveCookieOnly()">保存 Cookie</button>
+                        </div>
+                    </section>
+                </div>
             </div>
-        </div>
 
-        <!-- Main -->
-        <div class="main-content">
-            <div id="welcomeBanner"></div>
-
-            <div class="input-section">
-                <div class="input-group">
-                    <label for="keyword">搜索关键词</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">🔍</span>
-                        <input type="text" id="keyword" placeholder="输入关键词搜索，或留空查看最新邮件...">
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-steps">
+                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                    <div class="step" id="step-connecting">
+                        <div class="step-circle">01</div>
+                        <span class="step-label">连接</span>
+                    </div>
+                    <div class="step" id="step-searching">
+                        <div class="step-circle">02</div>
+                        <span class="step-label">搜索</span>
+                    </div>
+                    <div class="step" id="step-extracting">
+                        <div class="step-circle">03</div>
+                        <span class="step-label">提取</span>
+                    </div>
+                    <div class="step" id="step-summarizing">
+                        <div class="step-circle">04</div>
+                        <span class="step-label">总结</span>
                     </div>
                 </div>
+                <p class="progress-detail" id="progressDetail">正在准备...</p>
+            </div>
 
-                <div class="input-group">
-                    <label for="instruction">总结指令</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">💡</span>
-                        <textarea id="instruction" rows="1" placeholder="告诉 AI 如何总结...">请用自然语气总结这10封邮件，重点关注活动、课程作业和重要事项。</textarea>
+            <div id="resultsHistory" class="results-container results-hidden">
+                <div class="results-shell">
+                    <div class="results-history-header">
+                        <div class="results-history-title">
+                            <small>Output Archive</small>
+                            <h2>查询结果</h2>
+                        </div>
+                        <button class="btn-clear-results" onclick="clearAllResults()">清空全部</button>
                     </div>
-                    <div class="input-hint">按 Ctrl+Enter 快速提交</div>
-                </div>
-
-                <button class="btn-primary" id="runBtn" onclick="runTask()">
-                    <span class="spinner"></span>
-                    <span class="btn-label">开始智能分析</span>
-                </button>
-            </div>
-
-            <!-- Search History -->
-            <div class="history-section" id="historySection">
-                <div class="section-header">
-                    <span class="section-title">搜索历史</span>
-                    <button class="btn-text" onclick="clearHistory()">清空</button>
-                </div>
-                <div class="history-list" id="historyList">
-                    <span class="history-empty">暂无搜索记录</span>
+                    <div class="results-entries" id="resultsEntries"></div>
                 </div>
             </div>
-        </div>
 
-        <!-- Progress -->
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-steps">
-                <div class="progress-bar-fill" id="progressBarFill"></div>
-                <div class="step" id="step-connecting">
-                    <div class="step-circle">🌐</div>
-                    <span class="step-label">连接邮箱</span>
-                </div>
-                <div class="step" id="step-searching">
-                    <div class="step-circle">🔍</div>
-                    <span class="step-label">搜索邮件</span>
-                </div>
-                <div class="step" id="step-extracting">
-                    <div class="step-circle">📄</div>
-                    <span class="step-label">提取正文</span>
-                </div>
-                <div class="step" id="step-summarizing">
-                    <div class="step-circle">🤖</div>
-                    <span class="step-label">AI 总结</span>
-                </div>
+            <div class="app-footer">
             </div>
-            <p class="progress-detail" id="progressDetail">正在准备...</p>
-        </div>
-
-        <!-- Results -->
-        <div id="resultsHistory" class="results-container results-hidden">
-            <div class="results-history-header">
-                <div class="results-history-title">📋 查询结果</div>
-                <button class="btn-clear-results" onclick="clearAllResults()">清空全部</button>
-            </div>
-            <div id="resultsEntries"></div>
-        </div>
-
-        <!-- Footer -->
-        <div class="app-footer">
-            XJTLU Mail Assistant &middot; Powered by Playwright + LLM
         </div>
     </div>
 
-    <!-- Tutorial Modal -->
     <div id="tutorialModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2 class="modal-heading">📚 使用教程</h2>
+            <button class="close" onclick="closeModal()">&times;</button>
+            <h2 class="modal-heading">使用指南</h2>
 
             <div class="tutorial-section">
-                <h3>🔑 1. 配置 API</h3>
-                <p>点击页面顶部的 <strong>⚙️ 配置</strong> 按钮，填入 AI 服务商的 Base URL、API Key 和模型名称即可。</p>
+                <h3>1. 配置 AI 服务</h3>
+                <p>点击顶部的“配置”，填写 AI Base URL、API Key 和模型名称。保存后立即生效。</p>
                 <code class="code-block">"ai": {
   "base_url": "https://api.openai.com/v1",
   "api_key": "sk-...",
@@ -1404,32 +1803,63 @@
             </div>
 
             <div class="tutorial-section">
-                <h3>🍪 2. 获取 Cookie</h3>
+                <h3>2. 导入 Cookie</h3>
                 <ol>
-                    <li>在 Chrome/Edge 中安装 <strong>Cookie-Editor</strong> 插件</li>
-                    <li>登录 <a href="https://mail.xjtlu.edu.cn/owa" target="_blank" rel="noopener">mail.xjtlu.edu.cn</a></li>
-                    <li>点击 Cookie-Editor → <strong>Export as JSON</strong></li>
-                    <li>在 <strong>⚙️ 配置</strong> 中粘贴到 Cookie 字段</li>
+                    <li>在 Chrome 或 Edge 中安装 Cookie-Editor。</li>
+                    <li>登录 <a href="https://mail.xjtlu.edu.cn/owa" target="_blank" rel="noopener">mail.xjtlu.edu.cn</a>。</li>
+                    <li>使用 Export as JSON 导出 Cookie。</li>
+                    <li>把内容粘贴到配置弹窗中的 Cookie 字段。</li>
                 </ol>
-                <p><strong>提示：</strong>Cookie 会定期失效，届时重新导出即可。</p>
+                <p>如果 Cookie 失效，可重新导出后覆盖保存。</p>
             </div>
 
-            <div class="tutorial-section tutorial-section-last">
-                <h3>📂 3. 文件说明</h3>
+            <div class="tutorial-section">
+                <h3>3. 使用方式</h3>
                 <ul>
-                    <li><strong>run_app.bat</strong> — 双击启动</li>
-                    <li><strong>src/config.json</strong> — 配置文件</li>
-                    <li><strong>src/app.py</strong> — 核心服务</li>
+                    <li>关键词留空时，程序直接读取最近邮件。</li>
+                    <li>输入总结指令后，系统会搜索、提取正文并生成总结。</li>
+                    <li>查询结果和搜索历史会保存在本地浏览器存储中。</li>
                 </ul>
             </div>
         </div>
     </div>
 
-    <!-- Settings Modal -->
+    <div id="heroEditModal" class="modal">
+        <div class="modal-content modal-content-md">
+            <button class="close" onclick="closeHeroEditModal()">&times;</button>
+            <h2 class="modal-heading">自定义主标语</h2>
+            <p class="modal-description">
+                可自由选择展示方式；颜色、字号、分段均可自定义（HTML 模式）。内容仅保存在本机浏览器。
+            </p>
+            <div class="settings-form">
+                <div class="input-group">
+                    <label for="heroEditMode">展示方式</label>
+                    <select id="heroEditMode">
+                        <option value="plain">纯文本（转义后显示，支持换行）</option>
+                        <option value="markdown">Markdown（粗体、链接、标题等）</option>
+                        <option value="html">HTML（任意样式，如 &lt;span style="color:#e91e63"&gt;彩色&lt;/span&gt;）</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="heroEditContent">内容</label>
+                    <textarea id="heroEditContent" rows="10" placeholder="在此输入主标语…" style="width:100%; min-height:200px; padding:12px 14px; font:inherit; line-height:1.55;"></textarea>
+                </div>
+                <p class="field-note" style="margin-top:-4px;">HTML 会移除 script/iframe 等危险标签；仍可用内联 style、class。主题色变量：<code>var(--accent)</code>、<code>var(--text-strong)</code>。</p>
+                <div class="modal-footer modal-footer-spaced">
+                    <button type="button" class="btn-secondary" onclick="resetHeroTitle()">恢复默认</button>
+                    <div class="flex-gap-10">
+                        <button type="button" class="btn-secondary" onclick="closeHeroEditModal()">取消</button>
+                        <button type="button" class="btn-save" onclick="saveHeroTitle()">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="settingsModal" class="modal">
-        <div class="modal-content" style="max-width: 560px;">
-            <span class="close" onclick="closeSettingsModal()">&times;</span>
-            <h2 class="modal-heading">⚙️ 系统配置</h2>
+        <div class="modal-content modal-content-md">
+            <button class="close" onclick="closeSettingsModal()">&times;</button>
+            <h2 class="modal-heading">系统配置</h2>
 
             <div class="settings-form">
                 <div class="input-group">
@@ -1441,18 +1871,13 @@
                     <label for="aiApiKey">AI API Key</label>
                     <div class="password-wrapper">
                         <input type="password" id="aiApiKey" placeholder="sk-...">
-                        <button class="password-toggle" type="button" onclick="toggleApiKeyVisibility()" title="显示/隐藏">👁</button>
+                        <button class="password-toggle" type="button" onclick="toggleApiKeyVisibility()" title="显示或隐藏">SHOW</button>
                     </div>
                 </div>
 
                 <div class="input-group">
                     <label for="aiModel">AI Model</label>
                     <input type="text" id="aiModel" placeholder="gpt-4o-mini">
-                </div>
-
-                <div class="input-group">
-                    <label for="emailCookies">Cookies (JSON Array)</label>
-                    <textarea id="emailCookies" placeholder='[{"name": "...", "value": "...", "domain": "..."}]'></textarea>
                 </div>
 
                 <details class="advanced-settings">
@@ -1471,171 +1896,327 @@
         </div>
     </div>
 
-    <!-- Toast Container -->
     <div class="toast" id="globalToast"></div>
 
     <script>
-        // ====== Theme ======
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        const HERO_LEGACY_KEY = "mail_assistant_hero_title";
+        const HERO_V2_KEY = "mail_assistant_hero_v2";
+
+        const DEFAULT_HERO_V2 = {
+            mode: "html",
+            content:
+                '<span>狗修金sama，</span><span style="color:var(--accent)">快来处理</span><span>邮件吧</span>'
+        };
+
+        function migrateLegacyHeroTitleOnce() {
+            if (localStorage.getItem(HERO_V2_KEY)) return;
+            const raw = localStorage.getItem(HERO_LEGACY_KEY);
+            if (!raw) return;
+            try {
+                const o = JSON.parse(raw);
+                if (typeof o.prefix === "string" || typeof o.accent === "string" || typeof o.suffix === "string") {
+                    const html =
+                        `<span>${escapeHtml(o.prefix || "")}</span>` +
+                        `<span class="hero-title-accent">${escapeHtml(o.accent || "")}</span>` +
+                        `<span>${escapeHtml(o.suffix || "")}</span>`;
+                    localStorage.setItem(HERO_V2_KEY, JSON.stringify({ mode: "html", content: html }));
+                }
+            } catch {
+                /* ignore */
+            }
+        }
+
+        function loadHeroV2FromStorage() {
+            migrateLegacyHeroTitleOnce();
+            const raw = localStorage.getItem(HERO_V2_KEY);
+            if (!raw) return { ...DEFAULT_HERO_V2 };
+            try {
+                const o = JSON.parse(raw);
+                const mode = ["plain", "markdown", "html"].includes(o.mode) ? o.mode : "plain";
+                const content = typeof o.content === "string" ? o.content : DEFAULT_HERO_V2.content;
+                return { mode, content };
+            } catch {
+                return { ...DEFAULT_HERO_V2 };
+            }
+        }
+
+        function sanitizeHeroHtml(html) {
+            const wrap = document.createElement("div");
+            wrap.innerHTML = html;
+            wrap.querySelectorAll("script,iframe,object,embed,link,meta,style,form,input,button,textarea,select").forEach((el) => el.remove());
+            wrap.querySelectorAll("*").forEach((el) => {
+                [...el.attributes].forEach((attr) => {
+                    const n = attr.name.toLowerCase();
+                    const v = attr.value || "";
+                    if (n.startsWith("on")) el.removeAttribute(attr.name);
+                    if ((n === "href" || n === "src" || n === "xlink:href") && /^\s*javascript:/i.test(v)) {
+                        el.removeAttribute(attr.name);
+                    }
+                });
+            });
+            return wrap.innerHTML;
+        }
+
+        function parseMarkdownToHtml(text) {
+            try {
+                if (typeof marked !== "undefined" && typeof marked.parse === "function") {
+                    return marked.parse(text, { breaks: true });
+                }
+            } catch (e) {
+                /* fall through */
+            }
+            return escapeHtml(text).replace(/\n/g, "<br>");
+        }
+
+        function renderHeroTitle(state) {
+            const h = document.getElementById("heroTitle");
+            if (!h) return;
+            const s = state || loadHeroV2FromStorage();
+            let html = "";
+            if (s.mode === "plain") {
+                html = escapeHtml(s.content).replace(/\n/g, "<br>");
+            } else if (s.mode === "markdown") {
+                html = sanitizeHeroHtml(parseMarkdownToHtml(s.content));
+            } else {
+                html = sanitizeHeroHtml(s.content);
+            }
+            h.innerHTML = html.trim() ? html : "<span>&nbsp;</span>";
+        }
+
+        function openHeroEditModal() {
+            const s = loadHeroV2FromStorage();
+            const modeEl = document.getElementById("heroEditMode");
+            const contentEl = document.getElementById("heroEditContent");
+            const modal = document.getElementById("heroEditModal");
+            if (!modeEl || !contentEl || !modal) return;
+            modeEl.value = s.mode;
+            contentEl.value = s.content;
+            modal.style.display = "block";
+        }
+
+        function closeHeroEditModal() {
+            const modal = document.getElementById("heroEditModal");
+            if (modal) modal.style.display = "none";
+        }
+
+        function saveHeroTitle() {
+            const mode = document.getElementById("heroEditMode").value;
+            const content = document.getElementById("heroEditContent").value;
+            const payload = { mode, content };
+            localStorage.setItem(HERO_V2_KEY, JSON.stringify(payload));
+            localStorage.removeItem(HERO_LEGACY_KEY);
+            renderHeroTitle(payload);
+            closeHeroEditModal();
+            showToast("主标语已保存");
+        }
+
+        function resetHeroTitle() {
+            localStorage.removeItem(HERO_V2_KEY);
+            localStorage.removeItem(HERO_LEGACY_KEY);
+            renderHeroTitle({ ...DEFAULT_HERO_V2 });
+            const modeEl = document.getElementById("heroEditMode");
+            const contentEl = document.getElementById("heroEditContent");
+            if (modeEl) modeEl.value = DEFAULT_HERO_V2.mode;
+            if (contentEl) contentEl.value = DEFAULT_HERO_V2.content;
+            showToast("已恢复默认标语");
+        }
+
         function initTheme() {
-            const saved = localStorage.getItem('theme');
-            applyTheme(saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+            const saved = localStorage.getItem("theme");
+            applyTheme(saved || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
         }
 
         function toggleTheme() {
-            const current = document.documentElement.getAttribute('data-theme');
-            const next = current === 'dark' ? 'light' : 'dark';
+            const current = document.documentElement.getAttribute("data-theme");
+            const next = current === "dark" ? "light" : "dark";
             applyTheme(next);
-            localStorage.setItem('theme', next);
+            localStorage.setItem("theme", next);
         }
 
         function applyTheme(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            document.getElementById('themeIcon').textContent = theme === 'dark' ? '☀️' : '🌙';
-            document.getElementById('themeLabel').textContent = theme === 'dark' ? '浅色' : '深色';
+            document.documentElement.setAttribute("data-theme", theme);
+            document.getElementById("themeIcon").textContent = theme === "dark" ? "LT" : "DK";
+            document.getElementById("themeLabel").textContent = theme === "dark" ? "浅色模式" : "深色模式";
         }
 
         initTheme();
 
-        // ====== Welcome Banner (replaces alert) ======
         (function showWelcomeBanner() {
-            const container = document.getElementById('welcomeBanner');
-            const lastTime = localStorage.getItem('last_email_process_time');
-
-            if (!lastTime) {
-                container.innerHTML = `
-                    <div class="welcome-banner info">
-                        👋 欢迎使用 AI 邮件助手！输入关键词或直接点击分析，开始体验吧。
-                        <button class="banner-close" onclick="this.parentElement.remove()">&times;</button>
-                    </div>`;
-                return;
-            }
-
-            const last = new Date(lastTime);
-            const diffMs = Date.now() - last.getTime();
-            const diffMin = Math.floor(diffMs / 60000);
-            const diffHour = Math.floor(diffMs / 3600000);
-            const diffDay = Math.floor(diffMs / 86400000);
-
-            let timeStr = '';
-            if (diffDay > 0) timeStr = `${diffDay} 天`;
-            else if (diffHour > 0) timeStr = `${diffHour} 小时`;
-            else timeStr = `${diffMin} 分钟`;
-
-            if (diffHour >= 6) {
-                container.innerHTML = `
-                    <div class="welcome-banner reminder">
-                        📬 已有 ${timeStr} 未处理邮件，上次：${last.toLocaleString('zh-CN')}
-                        <button class="banner-close" onclick="this.parentElement.remove()">&times;</button>
-                    </div>`;
-            }
+            const container = document.getElementById("welcomeBanner");
+            container.innerHTML = "";
         })();
 
-        // ====== Modal ======
-        function openModal() { document.getElementById('tutorialModal').style.display = "block"; }
-        function closeModal() { document.getElementById('tutorialModal').style.display = "none"; }
+        function openModal() {
+            document.getElementById("tutorialModal").style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("tutorialModal").style.display = "none";
+        }
 
         async function openSettingsModal() {
-            document.getElementById('settingsModal').style.display = "block";
-            const btn = document.getElementById('saveConfigBtn');
+            document.getElementById("settingsModal").style.display = "block";
+            const btn = document.getElementById("saveConfigBtn");
             btn.textContent = "加载中...";
             btn.disabled = true;
             try {
-                const res = await fetch('/api/config');
+                const res = await fetch("/api/config");
                 const conf = await res.json();
-                document.getElementById('aiBaseUrl').value = conf.ai_base_url || '';
-                document.getElementById('aiApiKey').value = conf.ai_api_key || '';
-                document.getElementById('aiModel').value = conf.ai_model || 'gpt-4o-mini';
-                document.getElementById('emailUrl').value = conf.email_url || 'https://mail.xjtlu.edu.cn/owa';
-                document.getElementById('emailCookies').value = conf.email_cookies || '';
+                document.getElementById("aiBaseUrl").value = conf.ai_base_url || "";
+                document.getElementById("aiApiKey").value = conf.ai_api_key || "";
+                document.getElementById("aiModel").value = conf.ai_model || "gpt-4o-mini";
+                document.getElementById("emailUrl").value = conf.email_url || "https://mail.xjtlu.edu.cn/owa";
+                document.getElementById("emailCookies").value = conf.email_cookies || "";
             } catch (e) {
-                showToast('无法加载配置: ' + e.message);
+                showToast("无法加载配置: " + e.message);
             } finally {
                 btn.textContent = "保存配置";
                 btn.disabled = false;
             }
         }
 
-        function closeSettingsModal() { document.getElementById('settingsModal').style.display = "none"; }
+        function closeSettingsModal() {
+            document.getElementById("settingsModal").style.display = "none";
+        }
 
         function toggleApiKeyVisibility() {
-            const input = document.getElementById('aiApiKey');
+            const input = document.getElementById("aiApiKey");
             const btn = input.nextElementSibling;
-            if (input.type === 'password') {
-                input.type = 'text';
-                btn.textContent = '🙈';
+            if (input.type === "password") {
+                input.type = "text";
+                btn.textContent = "HIDE";
             } else {
-                input.type = 'password';
-                btn.textContent = '👁';
+                input.type = "password";
+                btn.textContent = "SHOW";
             }
         }
 
         async function saveConfig() {
-            const btn = document.getElementById('saveConfigBtn');
+            const btn = document.getElementById("saveConfigBtn");
             btn.textContent = "保存中...";
             btn.disabled = true;
 
             const payload = {
-                ai_base_url: document.getElementById('aiBaseUrl').value,
-                ai_api_key: document.getElementById('aiApiKey').value,
-                ai_model: document.getElementById('aiModel').value,
-                email_url: document.getElementById('emailUrl').value,
-                email_cookies: document.getElementById('emailCookies').value
+                ai_base_url: document.getElementById("aiBaseUrl").value,
+                ai_api_key: document.getElementById("aiApiKey").value,
+                ai_model: document.getElementById("aiModel").value,
+                email_url: document.getElementById("emailUrl").value,
+                email_cookies: document.getElementById("emailCookies").value
             };
 
             try {
-                const res = await fetch('/api/config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                const res = await fetch("/api/config", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();
-                if (data.status === 'success') {
-                    showToast('配置已保存');
+                if (data.status === "success") {
+                    showToast("配置已保存");
                     closeSettingsModal();
                 } else {
-                    showToast('保存失败: ' + data.message);
+                    showToast("保存失败: " + data.message);
                 }
             } catch (e) {
-                showToast('发生错误: ' + e.message);
+                showToast("发生错误: " + e.message);
             } finally {
                 btn.textContent = "保存配置";
                 btn.disabled = false;
             }
         }
 
+        var toastTimer = null;
+
+        async function saveCookieOnly() {
+            const cookieText = normalizeCookieTextareaValue(false);
+            if (cookieText == null) {
+                showToast("Cookie 格式无法识别，请粘贴 Cookie-Editor JSON 或 Netscape 文本");
+                return;
+            }
+            try {
+                const res = await fetch("/api/config");
+                const conf = await res.json();
+                const payload = {
+                    ai_base_url: conf.ai_base_url || "",
+                    ai_api_key: conf.ai_api_key || "",
+                    ai_model: conf.ai_model || "gpt-4o-mini",
+                    email_url: conf.email_url || "https://mail.xjtlu.edu.cn/owa",
+                    email_cookies: cookieText
+                };
+
+                const saveRes = await fetch("/api/config", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await saveRes.json();
+                if (data.status === "success") {
+                    showToast("Cookie 已保存");
+                } else {
+                    const msg = data.message || formatFastApiErrorDetail(data.detail) || ("HTTP " + saveRes.status);
+                    showToast("保存失败: " + msg);
+                }
+            } catch (e) {
+                showToast("保存 Cookie 失败: " + e.message);
+            }
+        }
+
+        function formatFastApiErrorDetail(detail) {
+            if (detail == null) return "";
+            if (typeof detail === "string") return detail;
+            if (Array.isArray(detail)) {
+                return detail.map((x) => (x.msg || x.message || JSON.stringify(x))).join("；");
+            }
+            return String(detail);
+        }
+
         window.onclick = function (event) {
-            if (event.target === document.getElementById('tutorialModal')) closeModal();
-            if (event.target === document.getElementById('settingsModal')) closeSettingsModal();
+            if (event.target === document.getElementById("tutorialModal")) closeModal();
+            if (event.target === document.getElementById("settingsModal")) closeSettingsModal();
+            if (event.target === document.getElementById("heroEditModal")) closeHeroEditModal();
         };
 
-        // ====== Keyboard Shortcut ======
-        document.addEventListener('keydown', function (e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                const runBtn = document.getElementById('runBtn');
+        document.addEventListener("keydown", function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                const runBtn = document.getElementById("runBtn");
                 if (!runBtn.disabled) runTask();
             }
-            if (e.key === 'Escape') {
+            if (e.key === "Escape") {
                 closeModal();
                 closeSettingsModal();
+                closeHeroEditModal();
             }
         });
 
-        // ====== Search History ======
-        const HISTORY_KEY = 'email_search_history';
+        const HISTORY_KEY = "email_search_history";
         const MAX_HISTORY = 10;
 
         function loadHistory() {
-            try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
-            catch { return []; }
+            try {
+                return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+            } catch {
+                return [];
+            }
         }
 
-        function saveToHistory(keyword, instruction) {
+        function saveToHistory(keyword, instruction, emailCount) {
             const history = loadHistory();
-            const exists = history.findIndex(h => h.keyword === keyword && h.instruction === instruction);
+            const exists = history.findIndex((h) => h.keyword === keyword && h.instruction === instruction && h.emailCount === emailCount);
             if (exists !== -1) history.splice(exists, 1);
             history.unshift({
-                keyword, instruction,
-                time: new Date().toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                keyword,
+                instruction,
+                emailCount,
+                time: new Date().toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
             });
             if (history.length > MAX_HISTORY) history.pop();
             localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
@@ -1643,26 +2224,27 @@
         }
 
         function renderHistory() {
-            const container = document.getElementById('historyList');
+            const container = document.getElementById("historyList");
             const history = loadHistory();
             if (history.length === 0) {
                 container.innerHTML = '<span class="history-empty">暂无搜索记录</span>';
                 return;
             }
             container.innerHTML = history.map((h, i) =>
-                `<div class="history-chip" onclick="fillFromHistory(${i})" title="${h.keyword} — ${h.instruction}">
-                    <span class="chip-keyword">${h.keyword || '最新'}</span>
-                    <span class="chip-time">${h.time}</span>
+                `<div class="history-chip" onclick="fillFromHistory(${i})" title="${escapeHtml(h.keyword || "")} - ${escapeHtml(h.instruction || "")}">
+                    <span class="chip-keyword">${escapeHtml(h.keyword || "最新")}</span>
+                    <span class="chip-time">${escapeHtml(h.time || "")}</span>
                 </div>`
-            ).join('');
+            ).join("");
         }
 
         function fillFromHistory(index) {
             const history = loadHistory();
             if (history[index]) {
-                document.getElementById('keyword').value = history[index].keyword;
-                document.getElementById('instruction').value = history[index].instruction;
-                document.getElementById('keyword').focus();
+                document.getElementById("keyword").value = history[index].keyword;
+                document.getElementById("instruction").value = history[index].instruction;
+                document.getElementById("emailCount").value = history[index].emailCount || 10;
+                document.getElementById("keyword").focus();
             }
         }
 
@@ -1673,39 +2255,38 @@
 
         renderHistory();
 
-        // ====== Progress ======
-        const STAGES = ['connecting', 'searching', 'extracting', 'summarizing'];
+        const STAGES = ["connecting", "searching", "extracting", "summarizing"];
         let statusPollInterval = null;
 
         function showProgress() {
-            document.getElementById('progressContainer').classList.add('visible');
+            document.getElementById("progressContainer").classList.add("visible");
         }
 
         function hideProgress() {
-            document.getElementById('progressContainer').classList.remove('visible');
+            document.getElementById("progressContainer").classList.remove("visible");
         }
 
         function setProgressStage(stage, detail) {
             const idx = STAGES.indexOf(stage);
             STAGES.forEach((s, i) => {
-                const el = document.getElementById('step-' + s);
-                el.classList.remove('active', 'completed');
-                if (i < idx) el.classList.add('completed');
-                else if (i === idx) el.classList.add('active');
+                const el = document.getElementById("step-" + s);
+                el.classList.remove("active", "completed");
+                if (i < idx) el.classList.add("completed");
+                else if (i === idx) el.classList.add("active");
             });
-            const fill = document.getElementById('progressBarFill');
-            const trackWidth = 68;
+            const fill = document.getElementById("progressBarFill");
+            const trackWidth = 75;
             const percent = idx >= 0 ? (idx / (STAGES.length - 1)) * trackWidth : 0;
-            fill.style.width = percent + '%';
-            document.getElementById('progressDetail').textContent = detail || '';
+            fill.style.width = percent + "%";
+            document.getElementById("progressDetail").textContent = detail || "";
         }
 
         function startStatusPolling() {
             statusPollInterval = setInterval(async () => {
                 try {
-                    const res = await fetch('/api/status');
+                    const res = await fetch("/api/status");
                     const data = await res.json();
-                    if (data.stage && data.stage !== 'idle' && data.stage !== 'done') {
+                    if (data.stage && data.stage !== "idle" && data.stage !== "done") {
                         setProgressStage(data.stage, data.detail);
                     }
                 } catch (e) { }
@@ -1719,15 +2300,14 @@
             }
         }
 
-        // ====== Typewriter ======
         function typewriterEffect(element, html, callback) {
-            const tempDiv = document.createElement('div');
+            const tempDiv = document.createElement("div");
             tempDiv.innerHTML = html;
-            const plainText = tempDiv.textContent || tempDiv.innerText || '';
+            const plainText = tempDiv.textContent || tempDiv.innerText || "";
 
-            element.innerHTML = '';
-            const cursor = document.createElement('span');
-            cursor.className = 'typewriter-cursor';
+            element.innerHTML = "";
+            const cursor = document.createElement("span");
+            cursor.className = "typewriter-cursor";
 
             let i = 0;
             const chunkSize = 3;
@@ -1748,31 +2328,32 @@
             type();
         }
 
-        // ====== Copy ======
         function copySummaryEntry(btnEl, text) {
             if (!text) return;
             navigator.clipboard.writeText(text).then(() => {
-                const icon = btnEl.querySelector('.copy-icon');
-                const label = btnEl.querySelector('.copy-label');
-                btnEl.classList.add('copied');
-                icon.textContent = '✅';
-                label.textContent = '已复制';
+                const icon = btnEl.querySelector(".copy-icon");
+                const label = btnEl.querySelector(".copy-label");
+                btnEl.classList.add("copied");
+                icon.textContent = "OK";
+                label.textContent = "已复制";
                 setTimeout(() => {
-                    btnEl.classList.remove('copied');
-                    icon.textContent = '📋';
-                    label.textContent = '复制';
+                    btnEl.classList.remove("copied");
+                    icon.textContent = "CP";
+                    label.textContent = "复制";
                 }, 2000);
             });
         }
 
-        // ====== Results Storage ======
-        const RESULTS_KEY = 'email_query_results';
+        const RESULTS_KEY = "email_query_results";
         const MAX_RESULTS = 20;
         let resultCounter = 0;
 
         function loadResultsFromStorage() {
-            try { return JSON.parse(localStorage.getItem(RESULTS_KEY) || '[]'); }
-            catch { return []; }
+            try {
+                return JSON.parse(localStorage.getItem(RESULTS_KEY) || "[]");
+            } catch {
+                return [];
+            }
         }
 
         function saveResultToStorage(record) {
@@ -1782,72 +2363,75 @@
             localStorage.setItem(RESULTS_KEY, JSON.stringify(results));
         }
 
-        // ====== Render Result Entry ======
         function renderResultEntry(record, useTypewriter) {
             resultCounter++;
-            const entryId = 'result-entry-' + resultCounter;
-            const summaryId = 'summary-' + resultCounter;
-            const emailListId = 'email-list-' + resultCounter;
-            const toggleId = 'email-toggle-' + resultCounter;
+            const entryId = "result-entry-" + resultCounter;
+            const summaryId = "summary-" + resultCounter;
+            const emailListId = "email-list-" + resultCounter;
+            const toggleId = "email-toggle-" + resultCounter;
 
-            const entry = document.createElement('div');
-            entry.className = 'result-entry';
+            const safeKeyword = escapeHtml(record.keyword || "最新邮件");
+            const safeTime = escapeHtml(record.time || "");
+            const safeInstruction = escapeHtml(record.instruction || "");
+            const emailCount = (record.emails && record.emails.length) || 0;
+
+            const entry = document.createElement("div");
+            entry.className = "result-entry";
             entry.id = entryId;
 
-            let metaHTML = `<div class="result-meta">`;
-            metaHTML += `<span class="result-meta-tag">${record.keyword || '最新邮件'}</span>`;
-            metaHTML += `<span class="result-meta-time">🕐 ${record.time}</span>`;
-            if (record.instruction) {
-                metaHTML += `<span class="result-meta-instruction" title="${record.instruction}">💡 ${record.instruction}</span>`;
+            let bodyHTML = `<div class="result-grid">`;
+            bodyHTML += `<div class="result-meta">`;
+            bodyHTML += `<span class="result-meta-tag">${safeKeyword}</span>`;
+            bodyHTML += `<span class="result-meta-time">${safeTime}</span>`;
+            if (safeInstruction) {
+                bodyHTML += `<div class="result-meta-instruction">${safeInstruction}</div>`;
             }
-            metaHTML += `</div>`;
+            bodyHTML += `</div>`;
 
-            let bodyHTML = `<div class="result-body">`;
-
+            bodyHTML += `<div class="result-body">`;
             bodyHTML += `<div class="result-summary-section">`;
-            bodyHTML += `<div class="card-header">`;
-            bodyHTML += `  <div class="card-title">📝 智能总结</div>`;
-            bodyHTML += `  <button class="btn-copy" onclick="copySummaryEntry(this, document.getElementById('${summaryId}')._rawText)">`;
-            bodyHTML += `    <span class="copy-icon">📋</span> <span class="copy-label">复制</span>`;
-            bodyHTML += `  </button>`;
+            bodyHTML += `<div class="section-line">`;
+            bodyHTML += `<div class="card-title">智能总结</div>`;
+            bodyHTML += `<button class="btn-copy" onclick="copySummaryEntry(this, document.getElementById('${summaryId}')._rawText)">`;
+            bodyHTML += `<span class="copy-icon">CP</span> <span class="copy-label">复制</span>`;
+            bodyHTML += `</button>`;
             bodyHTML += `</div>`;
             bodyHTML += `<div id="${summaryId}" class="summary-content"></div>`;
             bodyHTML += `</div>`;
 
-            const emailCount = (record.emails && record.emails.length) || 0;
             bodyHTML += `<div class="result-email-section">`;
-            bodyHTML += `<div class="card-header email-toggle" id="${toggleId}" onclick="toggleEmailList('${emailListId}', '${toggleId}')">`;
-            bodyHTML += `  <div class="card-title">📬 邮件列表 <span class="status-badge status-success">${emailCount} 封</span></div>`;
-            bodyHTML += `  <span class="toggle-arrow">▼</span>`;
+            bodyHTML += `<div class="section-line email-toggle collapsed" id="${toggleId}" onclick="toggleEmailList('${emailListId}', '${toggleId}')">`;
+            bodyHTML += `<div class="card-title">邮件列表</div>`;
+            bodyHTML += `<div style="display:flex; align-items:center; gap:10px;">`;
+            bodyHTML += `<span class="status-badge">${emailCount} 封</span>`;
+            bodyHTML += `<span class="toggle-arrow">▼</span>`;
+            bodyHTML += `</div>`;
             bodyHTML += `</div>`;
             bodyHTML += `<div class="email-list-wrapper collapsed" id="${emailListId}">`;
             bodyHTML += `<div class="email-list">`;
             if (record.emails && record.emails.length > 0) {
                 record.emails.forEach((email, idx) => {
                     bodyHTML += `<div class="email-item">`;
-                    bodyHTML += `  <div class="email-item-num">${idx + 1}</div>`;
-                    bodyHTML += `  <div class="email-item-content">`;
-                    bodyHTML += `    <div class="email-subject" title="${email.subject}">${email.subject}</div>`;
-                    bodyHTML += `    <div class="email-date">${email.date}</div>`;
-                    bodyHTML += `  </div>`;
+                    bodyHTML += `<div class="email-item-num">${idx + 1}</div>`;
+                    bodyHTML += `<div class="email-item-content">`;
+                    bodyHTML += `<div class="email-subject" title="${escapeHtml(email.subject || "")}">${escapeHtml(email.subject || "")}</div>`;
+                    bodyHTML += `<div class="email-date">${escapeHtml(email.date || "")}</div>`;
+                    bodyHTML += `</div>`;
                     bodyHTML += `</div>`;
                 });
             } else {
-                bodyHTML += '<div style="padding:15px;text-align:center;color:var(--text-tertiary)">未找到相关邮件</div>';
+                bodyHTML += `<div class="empty-box">未找到相关邮件</div>`;
             }
-            bodyHTML += `</div></div>`;
-            bodyHTML += `</div>`;
+            bodyHTML += `</div></div></div></div></div>`;
 
-            bodyHTML += `</div>`;
+            entry.innerHTML = bodyHTML;
 
-            entry.innerHTML = metaHTML + bodyHTML;
-
-            const container = document.getElementById('resultsEntries');
+            const container = document.getElementById("resultsEntries");
             container.appendChild(entry);
 
             const summaryEl = document.getElementById(summaryId);
-            summaryEl._rawText = record.summary || '';
-            const parsedHTML = record.summary ? marked.parse(record.summary) : '<p>没有生成总结内容。</p>';
+            summaryEl._rawText = record.summary || "";
+            const parsedHTML = record.summary ? marked.parse(record.summary) : "<p>没有生成总结内容。</p>";
 
             if (useTypewriter) {
                 typewriterEffect(summaryEl, parsedHTML);
@@ -1861,191 +2445,189 @@
         function toggleEmailList(listId, toggleId) {
             const list = document.getElementById(listId);
             const toggle = document.getElementById(toggleId);
-            list.classList.toggle('collapsed');
-            toggle.classList.toggle('collapsed');
+            list.classList.toggle("collapsed");
+            toggle.classList.toggle("collapsed");
         }
 
-        // ====== Restore Results ======
         function restoreResults() {
             const results = loadResultsFromStorage();
             if (results.length === 0) return;
 
-            document.getElementById('resultsHistory').classList.remove('results-hidden');
-
+            document.getElementById("resultsHistory").classList.remove("results-hidden");
             const reversed = [...results].reverse();
-            reversed.forEach(record => renderResultEntry(record, false));
+            reversed.forEach((record) => renderResultEntry(record, false));
 
-            const container = document.getElementById('resultsEntries');
+            const container = document.getElementById("resultsEntries");
             const children = Array.from(container.children);
-            children.reverse().forEach(child => container.appendChild(child));
+            children.reverse().forEach((child) => container.appendChild(child));
         }
 
         restoreResults();
 
         function clearAllResults() {
             localStorage.removeItem(RESULTS_KEY);
-            document.getElementById('resultsEntries').innerHTML = '';
-            document.getElementById('resultsHistory').classList.add('results-hidden');
+            document.getElementById("resultsEntries").innerHTML = "";
+            document.getElementById("resultsHistory").classList.add("results-hidden");
         }
 
-        // ====== Main Task ======
         async function runTask() {
-            const keyword = document.getElementById('keyword').value.trim();
-            const instruction = document.getElementById('instruction').value.trim();
-            const runBtn = document.getElementById('runBtn');
-            const resultsHistory = document.getElementById('resultsHistory');
+            const keyword = document.getElementById("keyword").value.trim();
+            const instruction = document.getElementById("instruction").value.trim();
+            const emailCount = Math.max(1, Math.min(10, Number(document.getElementById("emailCount").value) || 10));
+            const runBtn = document.getElementById("runBtn");
+            const resultsHistory = document.getElementById("resultsHistory");
 
             runBtn.disabled = true;
-            runBtn.classList.add('loading');
-            runBtn.querySelector('.btn-label').textContent = '处理中...';
+            runBtn.classList.add("loading");
+            runBtn.querySelector(".btn-label").textContent = "处理中...";
             showProgress();
-            setProgressStage('connecting', '正在连接邮箱服务器...');
+            setProgressStage("connecting", "正在连接邮箱服务器...");
             startStatusPolling();
 
             try {
-                const response = await fetch('/api/execute', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ keyword, instruction })
+                const response = await fetch("/api/execute", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ keyword, instruction, email_count: emailCount })
                 });
 
                 const data = await response.json();
                 stopStatusPolling();
 
-                if (data.status === 'cookie_expired') {
-                    setProgressStage('searching', '');
-                    document.getElementById('progressDetail').textContent = '⚠️ Cookie 已过期';
-                    document.getElementById('progressDetail').style.animation = 'none';
-                    showToast('Cookie 已过期，请在配置中更新');
-                } else if (data.status === 'success') {
-                    STAGES.forEach(s => {
-                        const el = document.getElementById('step-' + s);
-                        el.classList.remove('active');
-                        el.classList.add('completed');
+                if (data.status === "cookie_expired") {
+                    setProgressStage("searching", "");
+                    document.getElementById("progressDetail").textContent = "Cookie 已过期";
+                    document.getElementById("progressDetail").style.animation = "none";
+                    showToast("Cookie 已过期，请在配置中更新");
+                } else if (data.status === "success") {
+                    STAGES.forEach((s) => {
+                        const el = document.getElementById("step-" + s);
+                        el.classList.remove("active");
+                        el.classList.add("completed");
                     });
-                    document.getElementById('progressBarFill').style.width = '100%';
-                    document.getElementById('progressDetail').textContent = '✅ 分析完成';
-                    document.getElementById('progressDetail').style.animation = 'none';
+                    document.getElementById("progressBarFill").style.width = "100%";
+                    document.getElementById("progressDetail").textContent = "分析完成";
+                    document.getElementById("progressDetail").style.animation = "none";
 
-                    saveToHistory(keyword || '(最新邮件)', instruction);
-                    localStorage.setItem('last_email_process_time', new Date().toISOString());
+                    saveToHistory(keyword || "(最新邮件)", instruction, emailCount);
+                    localStorage.setItem("last_email_process_time", new Date().toISOString());
 
-                    const now = new Date().toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    const now = new Date().toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
                     const record = {
-                        keyword: keyword || '',
+                        keyword: keyword || "",
                         instruction,
-                        summary: data.summary || '',
+                        summary: data.summary || "",
                         emails: data.emails || [],
-                        time: now,
+                        time: now
                     };
 
                     saveResultToStorage(record);
-                    resultsHistory.classList.remove('results-hidden');
+                    resultsHistory.classList.remove("results-hidden");
                     const entry = renderResultEntry(record, true);
-                    document.getElementById('resultsEntries').prepend(entry);
+                    document.getElementById("resultsEntries").prepend(entry);
 
                     setTimeout(() => hideProgress(), 1800);
-                    setTimeout(() => entry.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+                    setTimeout(() => entry.scrollIntoView({ behavior: "smooth", block: "start" }), 280);
                 } else {
-                    setProgressStage('connecting', '❌ ' + (data.message || '执行失败'));
-                    document.getElementById('progressDetail').style.animation = 'none';
-                    showToast('执行失败: ' + (data.message || '未知错误'));
+                    setProgressStage("connecting", data.message || "执行失败");
+                    document.getElementById("progressDetail").style.animation = "none";
+                    showToast("执行失败: " + (data.message || "未知错误"));
                 }
             } catch (e) {
                 stopStatusPolling();
-                setProgressStage('connecting', '❌ 网络错误');
-                document.getElementById('progressDetail').style.animation = 'none';
-                showToast('请求错误: ' + e.message);
+                setProgressStage("connecting", "网络请求错误");
+                document.getElementById("progressDetail").style.animation = "none";
+                showToast("请求错误: " + e.message);
             } finally {
                 runBtn.disabled = false;
-                runBtn.classList.remove('loading');
-                runBtn.querySelector('.btn-label').textContent = '开始智能分析';
+                runBtn.classList.remove("loading");
+                runBtn.querySelector(".btn-label").textContent = "开始智能分析";
             }
         }
 
-        // ====== Cookie Check ======
         function setCookiePill(text, mode) {
-            const pill = document.getElementById('cookiePill');
-            pill.classList.remove('ok', 'bad', 'warn');
+            const pill = document.getElementById("cookiePill");
+            pill.classList.remove("ok", "bad", "warn");
             if (mode) pill.classList.add(mode);
             pill.textContent = text;
         }
 
         async function checkCookieStatus() {
-            const btn = document.getElementById('cookieStatusBtn');
-            const icon = document.getElementById('cookieIcon');
-            const label = document.getElementById('cookieLabel');
+            const btn = document.getElementById("cookieStatusBtn");
+            const icon = document.getElementById("cookieIcon");
+            const label = document.getElementById("cookieLabel");
 
             btn.disabled = true;
-            icon.textContent = '⏳';
-            label.textContent = '检查中...';
-            setCookiePill('检查中...', 'warn');
+            icon.textContent = "...";
+            label.textContent = "检查中";
+            setCookiePill("检查中...", "warn");
 
             try {
-                const response = await fetch('/api/check_cookie', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                const response = await fetch("/api/check_cookie", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" }
                 });
                 const data = await response.json();
 
-                if (data.status === 'valid') {
-                    icon.textContent = '✅';
-                    label.textContent = '有效';
-                    setCookiePill('Cookie 有效', 'ok');
-                    showToast('Cookie 验证通过');
-                } else if (data.status === 'invalid') {
-                    icon.textContent = '❌';
-                    label.textContent = '失效';
-                    setCookiePill('Cookie 已失效', 'bad');
-                    showToast('Cookie 已过期，请更新');
+                if (data.status === "valid") {
+                    icon.textContent = "OK";
+                    label.textContent = "Cookie 有效";
+                    setCookiePill("Cookie 有效", "ok");
+                    showToast("Cookie 验证通过");
+                } else if (data.status === "invalid") {
+                    icon.textContent = "NO";
+                    label.textContent = "Cookie 失效";
+                    setCookiePill("Cookie 已失效", "bad");
+                    showToast("Cookie 已过期，请更新");
                 } else {
-                    icon.textContent = '⚠️';
-                    label.textContent = '异常';
-                    setCookiePill('状态异常', 'warn');
-                    showToast(data.message || '状态异常');
+                    icon.textContent = "ER";
+                    label.textContent = "状态异常";
+                    setCookiePill("状态异常", "warn");
+                    showToast(data.message || "状态异常");
                 }
             } catch (e) {
-                icon.textContent = '❌';
-                label.textContent = '失败';
-                setCookiePill('检查失败', 'bad');
-                showToast('请求错误: ' + e.message);
+                icon.textContent = "ER";
+                label.textContent = "检查失败";
+                setCookiePill("检查失败", "bad");
+                showToast("请求错误: " + e.message);
             } finally {
                 btn.disabled = false;
                 setTimeout(() => {
-                    icon.textContent = '🍪';
-                    label.textContent = '验证 Cookie';
+                    icon.textContent = "CK";
+                    label.textContent = "检查状态";
                 }, 4000);
             }
         }
 
-        // ====== Cookie Auto-Convert ======
         function parseCookieString(text) {
-            text = text.trim();
-            if (text.startsWith('[') && text.endsWith(']')) {
+            text = (text || "").replace(/^\uFEFF/, "").trim();
+            if (text.startsWith("[") && text.endsWith("]")) {
                 try { return JSON.parse(text); } catch (e) { }
             }
-            if (text.includes('\t')) {
-                const lines = text.split('\n');
+            if (text.includes("\t")) {
+                const lines = text.split("\n");
                 const cookies = [];
                 for (let line of lines) {
                     line = line.trim();
-                    if (!line || line.startsWith('#')) continue;
-                    const parts = line.split('\t');
+                    if (!line || line.startsWith("#")) continue;
+                    const parts = line.split("\t");
                     if (parts.length >= 7) {
                         cookies.push({
-                            domain: parts[0], path: parts[2],
-                            secure: parts[3] === 'TRUE',
+                            domain: parts[0],
+                            path: parts[2],
+                            secure: parts[3] === "TRUE",
                             expirationDate: parseInt(parts[4]) || 0,
-                            name: parts[5], value: parts[6]
+                            name: parts[5],
+                            value: parts[6]
                         });
                     }
                 }
                 if (cookies.length > 0) return cookies;
             }
-            if (text.includes('=') && (text.includes(';') || !text.includes('\n'))) {
+            if (text.includes("=") && (text.includes(";") || !text.includes("\n"))) {
                 const cookies = [];
-                for (let pair of text.split(';')) {
-                    const idx = pair.indexOf('=');
+                for (let pair of text.split(";")) {
+                    const idx = pair.indexOf("=");
                     if (idx > 0) {
                         const name = pair.substring(0, idx).trim();
                         const value = pair.substring(idx + 1).trim();
@@ -2059,35 +2641,75 @@
             return null;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const cookieTextarea = document.getElementById('emailCookies');
-            if (!cookieTextarea) return;
-
-            function autoConvert(val, source) {
-                const parsed = parseCookieString(val);
-                if (parsed && typeof parsed === 'object') {
-                    const jsonStr = JSON.stringify(parsed, null, 2);
-                    if (jsonStr !== val.trim()) {
-                        cookieTextarea.value = jsonStr;
-                        showToast('已自动转换为 JSON 格式');
-                    }
+        function normalizeCookieTextareaValue(showConvertedToast = true) {
+            const cookieTextarea = document.getElementById("emailCookies");
+            if (!cookieTextarea) return null;
+            const raw = cookieTextarea.value || "";
+            const trimmed = raw.replace(/^\uFEFF/, "").trim();
+            if (!trimmed) {
+                cookieTextarea.value = "";
+                return "";
+            }
+            const parsed = parseCookieString(trimmed);
+            if (!parsed || typeof parsed !== "object") {
+                return null;
+            }
+            const jsonStr = JSON.stringify(parsed, null, 2);
+            if (cookieTextarea.value.trim() !== jsonStr) {
+                cookieTextarea.value = jsonStr;
+                if (showConvertedToast) {
+                    showToast("已自动转换为 JSON 格式");
                 }
             }
+            return jsonStr;
+        }
 
-            cookieTextarea.addEventListener('input', e => autoConvert(e.target.value, 'input'));
-            cookieTextarea.addEventListener('paste', e => {
-                setTimeout(() => autoConvert(e.target.value, 'paste'), 10);
-            });
+        async function loadCookieEditor() {
+            try {
+                const res = await fetch("/api/config");
+                const conf = await res.json();
+                const cookieTextarea = document.getElementById("emailCookies");
+                if (cookieTextarea) {
+                    cookieTextarea.value = conf.email_cookies || "";
+                    normalizeCookieTextareaValue(false);
+                }
+            } catch (e) {
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const cookieTextarea = document.getElementById("emailCookies");
+            if (cookieTextarea) {
+                cookieTextarea.addEventListener("input", () => normalizeCookieTextareaValue(false));
+                cookieTextarea.addEventListener("paste", (e) => {
+                    setTimeout(() => normalizeCookieTextareaValue(true), 10);
+                });
+                cookieTextarea.addEventListener("blur", () => {
+                    normalizeCookieTextareaValue(false);
+                });
+            }
+            loadCookieEditor();
+            const heroBtn = document.getElementById("heroEditOpenBtn");
+            if (heroBtn) {
+                heroBtn.addEventListener("click", (ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    openHeroEditModal();
+                });
+            }
         });
-
-        // ====== Toast ======
-        let toastTimer = null;
         function showToast(message) {
-            const toast = document.getElementById('globalToast');
+            const toast = document.getElementById("globalToast");
             toast.textContent = message;
-            toast.classList.add('visible');
+            toast.classList.add("visible");
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => toast.classList.remove('visible'), 3000);
+            toastTimer = setTimeout(() => toast.classList.remove("visible"), 3000);
+        }
+
+        try {
+            renderHeroTitle();
+        } catch (e) {
+            console.error("renderHeroTitle:", e);
         }
     </script>
 </body>

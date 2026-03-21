@@ -3,6 +3,7 @@ from pathlib import Path
 import asyncio
 import json
 import os
+import re
 
 import requests
 from dotenv import load_dotenv
@@ -99,6 +100,110 @@ def call_llm(prompt: str, config: dict) -> str:
         return f"LLM 调用失败: {exc}"
 
 
+# 人类语言 token：拉丁词（含撇号、连字符）、数字段、CJK 单字（统计正文规模用）
+_HUMAN_TOKEN = re.compile(
+    r"[0-9]+(?:[.,][0-9]+)*|"
+    r"[A-Za-zÀ-ÖØ-öø-ÿ]+(?:'[A-Za-zÀ-ÖØ-öø-ÿ]+)?(?:-[A-Za-zÀ-ÖØ-öø-ÿ]+)*|"
+    r"[\u4e00-\u9fff]",
+    re.UNICODE,
+)
+
+
+def _human_token_spans(text: str) -> list:
+    return [(m.start(), m.end()) for m in _HUMAN_TOKEN.finditer(text or "")]
+
+
+def count_words_human(text: str) -> int:
+    return len(_human_token_spans(text))
+
+
+LLM_PARALLEL_BATCH_SIZE = 3
+
+
+def format_human_email_fragment(
+    subject: str,
+    date: str,
+    body: str,
+    *,
+    part_index: int = 1,
+    part_total: int = 1,
+) -> str:
+    """仅自然语言：主题、日期、正文。续段用一句人话衔接，无机器分隔符。"""
+    subject = (subject or "").strip() or "无主题"
+    date = (date or "").strip() or "无日期"
+    body = (body or "").strip()
+    lines: list = []
+    if part_total > 1 and part_index > 1:
+        lines.append("以下内容紧接上一段，为同一封邮件的连续正文。")
+        lines.append("")
+    lines.append(f"主题：{subject}")
+    lines.append(f"日期：{date}")
+    lines.append("")
+    lines.append(body)
+    return "\n".join(lines)
+
+
+def total_extracted_body_words(items: list) -> int:
+    return sum(count_words_human(str(x.get("body") or "")) for x in items)
+
+
+def normalize_parallel_llm_result(result: object) -> str:
+    if isinstance(result, Exception):
+        return f"本封分析失败：{type(result).__name__}: {result}"
+    return str(result)
+
+
+def build_per_email_analysis_prompt(
+    *,
+    today: str,
+    instruction: str,
+    email_human_text: str,
+    email_index: int,
+    email_total: int,
+) -> str:
+    return f"""当前日期：{today}
+
+【用户指令（最高优先级，必须严格遵守）】：
+{instruction}
+
+下面仅有第 {email_index}/{email_total} 封邮件的全部可读内容。请只根据这一封作答，不要提及其他邮件。
+【严禁编造】只能基于下方原文作答。若正文缺失或提取失败须如实说明。
+若用户指令未规定格式，默认按：
+- 邮件标题：
+- 发件人：（若原文中有则填，无则说明未提供）
+- 内容总结：
+- 重要程度：（1-5 星）
+
+邮件内容：
+{email_human_text}
+"""
+
+
+def build_final_merge_prompt(
+    *,
+    today: str,
+    instruction: str,
+    per_email_sections: str,
+) -> str:
+    return f"""当前日期：{today}
+
+【用户指令（最高优先级，必须严格遵守）】：
+{instruction}
+
+前面已对每封邮件分别做过初步分析（如下）。请严格依据这些分析汇总成最终结果，满足用户指令。
+若用户只关心部分邮件，只需输出相关部分。
+【严禁编造】不得新增下方未出现的邮件或事实。
+若用户指令未规定格式，默认对涉及的每封邮件按：
+- 邮件标题：
+- 发件人：
+- 内容总结：
+- 重要程度：（1-5 星）
+
+各封邮件的初步分析：
+{per_email_sections}
+"""
+
+
 async def get_browser_page(config: dict):
     email_config = config.get("email", {})
     playwright = await async_playwright().start()
@@ -140,7 +245,7 @@ async def get_browser_page(config: dict):
     return playwright, browser, context, page
 
 
-async def search_emails(page, keyword: str, config: dict = None) -> list:
+async def search_emails(page, keyword: str, config: dict = None, max_emails: int = 10) -> list:
     if keyword:
         # 有关键词：跳转到搜索页面
         base_url = (config or {}).get("email", {}).get("url", "").rstrip("/")
@@ -299,7 +404,8 @@ async def search_emails(page, keyword: str, config: dict = None) -> list:
             return datetime(1900, 1, 1)
 
     mail_list.sort(key=lambda x: parse_date(x["raw_date"]), reverse=True)
-    final_items = mail_list[:10]
+    safe_max_emails = max(1, min(int(max_emails or 10), 10))
+    final_items = mail_list[:safe_max_emails]
 
     emails = []
     for m in final_items:
@@ -309,9 +415,9 @@ async def search_emails(page, keyword: str, config: dict = None) -> list:
             "href": m["href"],
             "locator": m["locator"]
         })
-        print(f"最终前10封邮件 {len(emails)}: {m['subject'][:75]} | 日期: {m['date_str']}")
+        print(f"最终邮件 {len(emails)}: {m['subject'][:75]} | 日期: {m['date_str']}")
 
-    print(f"最终提取到最近前10封邮件")
+    print(f"最终提取到最近前 {len(emails)} 封邮件")
     return emails
 
 
@@ -408,115 +514,97 @@ async def main() -> None:
             
         user_instruction = input("请输入总结指令（例如：只告诉我前3封的内容、只总结有活动的邮件、用简单中文说一下）：").strip()
         if not user_instruction:
-            user_instruction = "请用自然语气总结这10封邮件，重点关注活动、课程作业和重要事项。"
+            user_instruction = "请用自然语气总结这些邮件，重点关注活动、课程作业和重要事项。"
+        email_count_raw = input("请输入处理邮件数量（1-10，默认 10）：").strip()
+        try:
+            email_count = int(email_count_raw) if email_count_raw else 10
+        except ValueError:
+            email_count = 10
+        email_count = max(1, min(email_count, 10))
 
         try:
-            emails = await search_emails(page, search_keyword, config=config)
+            emails = await search_emails(page, search_keyword, config=config, max_emails=email_count)
         except RuntimeError as e:
             print(f"\n❌ {e}")
             return
         print(f"成功提取到 {len(emails)} 封邮件列表")
         
-        print("正在提取10封邮件完整正文...")
-        full_bodies = []
+        print(f"正在提取 {len(emails)} 封邮件完整正文...")
+        extracted_items = []
         for i, e in enumerate(emails):
             print(f"正在提取第 {i+1} 封邮件正文: {e['subject'][:30]}...")
-            # 传入 locator 对象进行点击提取
             body = await extract_full_body(page, e["locator"])
-            full_bodies.append(f"=== 邮件 {i+1}: {e['subject']} ===\n日期: {e['date']}\n\n{body}\n\n{'='*80}\n")
-            # 稍作等待，模拟人类操作
+            extracted_items.append(
+                {
+                    "index": i + 1,
+                    "subject": e.get("subject", ""),
+                    "date": e.get("date", ""),
+                    "body": body,
+                }
+            )
             await page.wait_for_timeout(1000)
 
-        if len(full_bodies) <= 4:
-            aggregated_text = "\n".join(full_bodies)
-            total_chars = len(aggregated_text)
-        else:
-            aggregated_text = "\n".join(full_bodies)
-            total_chars = len(aggregated_text)
+        if not extracted_items:
+            print("没有可分析的邮件。")
+            return
 
-        CHARS_PER_CHUNK = 6000
+        body_words = total_extracted_body_words(extracted_items)
+        n = len(extracted_items)
+        today = datetime.now().strftime("%Y-%m-%d")
+        loop = asyncio.get_running_loop()
+        total_batches = (n + LLM_PARALLEL_BATCH_SIZE - 1) // LLM_PARALLEL_BATCH_SIZE
 
-        if total_chars <= CHARS_PER_CHUNK:
-            summary_prompt = f"""
-当前日期：{datetime.now().strftime('%Y-%m-%d')}
+        async def run_llm_task(prompt: str) -> str:
+            return await loop.run_in_executor(None, call_llm, prompt, config)
 
-【用户指令（最高优先级，必须严格遵守）】：
-{user_instruction}
+        print(
+            f"邮件正文总词数（仅 body）: {body_words}；"
+            f"每批并发 {LLM_PARALLEL_BATCH_SIZE} 次，共 {total_batches} 批单封 LLM，再 1 次汇总。"
+        )
 
-请严格按照用户指令处理以下邮件。用户指令决定了你应该关注哪些邮件、输出什么内容、用什么风格。
-【严禁编造】只能基于下方邮件原文作答，不得虚构任何内容。提取失败的邮件如实说明。
-如果用户指令没有指定输出格式，则默认对涉及的每封邮件按以下格式输出：
-- 邮件标题：[标题]
-- 发件人：[发件人]
-- 内容总结：[简练的总结]
-- 重要程度：[1-5星，如 ★★★☆☆]
+        prompts = []
+        for i, item in enumerate(extracted_items):
+            human = format_human_email_fragment(
+                str(item.get("subject", "") or ""),
+                str(item.get("date", "") or ""),
+                str(item.get("body") or ""),
+            )
+            prompts.append(
+                build_per_email_analysis_prompt(
+                    today=today,
+                    instruction=user_instruction,
+                    email_human_text=human,
+                    email_index=i + 1,
+                    email_total=n,
+                )
+            )
 
-以下是全部 {len(full_bodies)} 封邮件的内容（供你根据用户指令选择性处理）：
-{aggregated_text}
-"""
-            print(f"\n正在调用 LLM（单次调用，{total_chars} 字符）...")
-            summary = call_llm(summary_prompt, config)
-        else:
-            chunks = []
-            current_chunk = []
-            current_chars = 0
-            for body in full_bodies:
-                body_len = len(body)
-                if current_chars + body_len > CHARS_PER_CHUNK and current_chunk:
-                    chunks.append("\n".join(current_chunk))
-                    current_chunk = []
-                    current_chars = 0
-                current_chunk.append(body)
-                current_chars += body_len
-            if current_chunk:
-                chunks.append("\n".join(current_chunk))
+        normalized = []
+        for batch_index, start in enumerate(range(0, n, LLM_PARALLEL_BATCH_SIZE), start=1):
+            batch_prompts = prompts[start:start + LLM_PARALLEL_BATCH_SIZE]
+            print(
+                f"\n并行调用 LLM 分析第 {batch_index}/{total_batches} 批"
+                f"（{len(batch_prompts)} 封邮件）…"
+            )
+            parallel_out = await asyncio.gather(
+                *[run_llm_task(p) for p in batch_prompts],
+                return_exceptions=True,
+            )
+            normalized.extend(normalize_parallel_llm_result(r) for r in parallel_out)
+        per_email_sections = "\n\n".join(
+            f"—— 第 {i + 1} 封邮件的初步分析 ——\n{t}" for i, t in enumerate(normalized)
+        )
+        final_prompt = build_final_merge_prompt(
+            today=today,
+            instruction=user_instruction,
+            per_email_sections=per_email_sections,
+        )
+        print("\n正在调用 LLM 生成最终汇总…")
+        try:
+            summary = await run_llm_task(final_prompt)
+        except Exception as exc:
+            summary = f"最终汇总失败：{exc}"
 
-            print(f"\n智能分块: {total_chars} 字符 → {len(chunks)} 块")
-
-            chunk_summaries = []
-            for idx, chunk_text in enumerate(chunks):
-                print(f"\n正在调用 LLM 分析第 {idx+1}/{len(chunks)} 批邮件...")
-                chunk_prompt = f"""
-当前日期：{datetime.now().strftime('%Y-%m-%d')}
-
-【用户指令（最高优先级）】：
-{user_instruction}
-
-这是第 {idx+1}/{len(chunks)} 批邮件。请根据用户指令处理这批邮件。
-【严禁编造】只能基于下方邮件原文作答，不得虚构任何内容。提取失败的邮件如实说明。
-如果用户指令没有指定输出格式，则默认对涉及的每封邮件按以下格式输出：
-- 邮件标题：[标题]
-- 发件人：[发件人]
-- 内容总结：[简练的总结]
-- 重要程度：[1-5星，如 ★★★☆☆]
-
-邮件内容：
-{chunk_text}
-"""
-                chunk_summary = call_llm(chunk_prompt, config)
-                chunk_summaries.append(f"【第 {idx+1} 批分析结果】\n{chunk_summary}")
-
-            print("\n正在调用 LLM 生成最终总结...")
-            aggregated_summaries = "\n\n".join(chunk_summaries)
-            final_prompt = f"""
-当前日期：{datetime.now().strftime('%Y-%m-%d')}
-
-【用户指令（最高优先级，必须严格遵守）】：
-{user_instruction}
-
-前面我们已经分批处理了邮件并得到了各批次的分析结果。
-请严格按照用户指令，汇总输出最终结果。如果用户只问了某封邮件，你只需要回答那封。
-【严禁编造】不得虚构任何邮件信息，所有内容必须来自前面的分析结果。
-如果用户指令没有指定输出格式，则默认对涉及的每封邮件按以下格式输出：
-- 邮件标题：[标题]
-- 发件人：[发件人]
-- 内容总结：[简练的总结]
-- 重要程度：[1-5星，如 ★★★☆☆]
-
-各批次分析结果：
-{aggregated_summaries}
-"""
-            summary = call_llm(final_prompt, config)
         print("\n=== LLM 生成的邮件总结 ===\n")
         print(summary)
         print("\n总结完成！")
