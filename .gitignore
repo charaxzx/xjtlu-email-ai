@@ -20,6 +20,9 @@ src/dev_extract_bodies_ALL.json
 src/deep_scan_result.json
 src/deep_scan_exports/
 
+# ====== Local submission bundles (do not push) ======
+submission_to_teacher.zip
+
 # ====== OS ======
 .DS_Store
 Thumbs.db

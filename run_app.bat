@@ -1,52 +1,50 @@
 @echo off
+rem Keep this file ASCII-only: Chinese Windows CMD often mis-parses UTF-8 .bat and tries to run garbage as commands.
 chcp 65001 >nul
-title AI Email Assistant Launcher
+title Practice2 Web Launcher
 cls
 
 echo ========================================================
-echo          AI Email Assistant Launcher
+echo   Practice2 - Web launcher
 echo ========================================================
 echo.
 
 cd /d "%~dp0"
 
-echo [1/3] Checking Python environment...
-
-if exist ".venv\Scripts\activate.bat" (
-    echo    - Found .venv, activating...
-    call .venv\Scripts\activate.bat
-) else if exist "venv\Scripts\activate.bat" (
-    echo    - Found venv, activating...
-    call venv\Scripts\activate.bat
+set "PY_EXE="
+if exist ".venv\Scripts\python.exe" (
+    set "PY_EXE=%CD%\.venv\Scripts\python.exe"
+    echo Found .venv Python.
+) else if exist "venv\Scripts\python.exe" (
+    set "PY_EXE=%CD%\venv\Scripts\python.exe"
+    echo Found venv Python.
 ) else (
-    echo    - No virtual environment found, using system Python...
+    set "PY_EXE=python"
+    echo No project venv found, using python from PATH...
 )
 
-python --version >nul 2>&1
+"%PY_EXE%" --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo.
-    echo [ERROR] Python not found!
-    echo Please make sure Python is installed and added to PATH.
+    echo [ERROR] Python not found.
+    echo Install Python 3.10+ or create .venv first, then retry.
     echo.
     pause
-    exit /b
+    exit /b 1
 )
 
 echo.
-echo [2/3] Starting server...
-echo    - URL: http://localhost:8001
-echo    - Opening browser...
-echo.
-
+echo Opening browser: http://localhost:8001
 start "" "http://localhost:8001"
 
-echo [3/3] Server started. Do not close this window.
 echo.
+echo Starting server... Do not close this window.
 echo Press Ctrl+C to stop.
-echo ========================================================
 echo.
 
 cd src
-python app.py
+"%PY_EXE%" app.py
 
+echo.
+echo Server exited.
 pause

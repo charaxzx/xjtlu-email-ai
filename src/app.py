@@ -44,6 +44,7 @@ from main import (
     classify_email,
     parse_email_date_for_filter,
     EMAIL_CATEGORY_LABELS,
+    merge_list_and_pane_datetime,
 )
 
 # Configure logging
@@ -470,14 +471,16 @@ async def dev_style_deep_extract_to_export(
 
         loc = await dev_style_locator_sequential(target_frame, cvid)
         dt = (em.get("date") or "").strip()
+        d_disp = (em.get("date_display") or "").strip()
         body = ""
         err = None
+        pane_disp, pane_sort = "", ""
         if loc is None:
             err = "列表项无 locator"
             body = f"[正文提取失败: {err}]"
         else:
             try:
-                body = await extract_full_body(
+                body, pane_disp, pane_sort = await extract_full_body(
                     page,
                     loc,
                     expected_subject=subj,
@@ -488,12 +491,18 @@ async def dev_style_deep_extract_to_export(
                 err = str(exc)[:200]
                 body = f"[正文提取失败: {err}]"
 
+        merged_disp, merged_sort = merge_list_and_pane_datetime(
+            dt, d_disp, pane_sort, pane_disp
+        )
+        final_date = merged_sort or dt
+        final_disp = merged_disp or merged_sort or dt
         sender = (em.get("sender") or "").strip()
         href = (em.get("href") or "").strip()
         res_item = {
             "index": ord_,
             "subject": subj,
-            "date": dt,
+            "date": final_date,
+            "date_display": final_disp,
             "sender": sender,
             "convid": cvid or None,
             "href": href,
@@ -1873,7 +1882,7 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                     print(f"Extracting body for email {i+1}...")
                     loc = email.get("locator")
                     try:
-                        body = await extract_full_body(
+                        body, pane_disp, pane_sort = await extract_full_body(
                             state.page,
                             loc,
                             expected_subject=email.get("subject", ""),
@@ -1882,12 +1891,22 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                     except Exception as e:
                         logger.warning(f"Failed to extract email {i+1} body: {repr(e)}")
                         body = f"[正文提取失败: {str(e)[:100]}]"
+                        pane_disp, pane_sort = "", ""
                         failed_count += 1
+                    merged_disp, merged_sort = merge_list_and_pane_datetime(
+                        str(email.get("date", "") or ""),
+                        str(email.get("date_display", "") or ""),
+                        pane_sort,
+                        pane_disp,
+                    )
+                    final_sort = merged_sort or email.get("date", "")
+                    final_disp = merged_disp or merged_sort or email.get("date", "")
                     extracted_items.append(
                         {
                             "index": i + 1,
                             "subject": email.get("subject", ""),
-                            "date": email.get("date", ""),
+                            "date": final_sort,
+                            "date_display": final_disp,
                             "sender": email.get("sender", ""),
                             "body": body,
                         }
@@ -1896,7 +1915,8 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                         {
                             "id": i,
                             "subject": email.get("subject", ""),
-                            "date": email.get("date", ""),
+                            "date": final_sort,
+                            "date_display": final_disp,
                             "href": email.get("href", ""),
                         }
                     )
@@ -1943,6 +1963,7 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                     str(item.get("date", "") or ""),
                     str(item.get("body") or ""),
                     sender=str(item.get("sender", "") or ""),
+                    date_display=str(item.get("date_display", "") or ""),
                 )
                 prompts.append(
                     build_per_email_analysis_prompt(
@@ -1977,6 +1998,7 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                 today=today,
                 instruction=instruction,
                 per_email_sections=per_email_sections,
+                email_count=n,
             )
             state.stage_detail = "AI 正在生成最终总结…"
             print("Calling LLM for final summary…")
@@ -2195,11 +2217,13 @@ async def dev_extract_daily_bodies_no_llm(
             state.stage_detail = f"〔开发者·日常流〕正在提取第 {i + 1}/{len(emails)} 封正文…"
             subj = (email.get("subject") or "").strip()
             dt = (email.get("date") or "").strip()
+            d_disp = (email.get("date_display") or "").strip()
             sender = (email.get("sender") or "").strip()
             body = ""
             err = None
+            pane_disp, pane_sort = "", ""
             try:
-                body = await extract_full_body(
+                body, pane_disp, pane_sort = await extract_full_body(
                     state.page,
                     email.get("locator"),
                     expected_subject=subj,
@@ -2209,12 +2233,18 @@ async def dev_extract_daily_bodies_no_llm(
                 err = str(exc)[:200]
                 body = f"[正文提取失败: {err}]"
 
+            merged_disp, merged_sort = merge_list_and_pane_datetime(
+                dt, d_disp, pane_sort, pane_disp
+            )
+            final_date = merged_sort or dt
+            final_disp = merged_disp or merged_sort or dt
             ok = err is None and bool(body) and not str(body).startswith("[正文提取失败")
             items.append(
                 {
                     "index": i + 1,
                     "subject": subj,
-                    "date": dt,
+                    "date": final_date,
+                    "date_display": final_disp,
                     "sender": sender,
                     "body": body,
                     "body_chars": len(body or ""),
@@ -2223,7 +2253,7 @@ async def dev_extract_daily_bodies_no_llm(
             )
             text_blocks.append(
                 f"========== 第 {i + 1} 封 ==========\n"
-                f"主题: {subj}\n发件人: {sender or '(无)'}\n日期: {dt or '(无)'}\n\n{body}\n"
+                f"主题: {subj}\n发件人: {sender or '(无)'}\n日期: {final_disp or final_date or '(无)'}\n\n{body}\n"
             )
             await asyncio.sleep(0.2)
 

@@ -10,7 +10,7 @@ import requests
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timedelta
 from calendar import month_abbr
 
 _LIST_ITEM_SELECTOR = 'div[role="option"][data-convid], ._lvv_w[data-convid], [data-convid]'
@@ -231,6 +231,411 @@ def _extract_date_from_line_safe(line: str, *, max_line_len: int = 44) -> str:
     return ""
 
 
+# OWA 列表日期：周一=0 … 周日=6（与 datetime.weekday() 一致）
+_CN_WEEKDAY_TO_IDX = {
+    "周一": 0,
+    "周二": 1,
+    "周三": 2,
+    "周四": 3,
+    "周五": 4,
+    "周六": 5,
+    "周日": 6,
+    "星期一": 0,
+    "星期二": 1,
+    "星期三": 2,
+    "星期四": 3,
+    "星期五": 4,
+    "星期六": 5,
+    "星期日": 6,
+    "星期天": 6,
+}
+_EN_WEEKDAY_TO_IDX = {
+    "mon": 0,
+    "monday": 0,
+    "tue": 1,
+    "tues": 1,
+    "tuesday": 1,
+    "wed": 2,
+    "weds": 2,
+    "wednesday": 2,
+    "thu": 3,
+    "thur": 3,
+    "thurs": 3,
+    "thursday": 3,
+    "fri": 4,
+    "friday": 4,
+    "sat": 5,
+    "saturday": 5,
+    "sun": 6,
+    "sunday": 6,
+}
+
+
+def _parse_weekday_token(s: str) -> Optional[int]:
+    t = (s or "").strip()
+    if not t:
+        return None
+    if t in _CN_WEEKDAY_TO_IDX:
+        return _CN_WEEKDAY_TO_IDX[t]
+    tl = t.lower().rstrip(".")
+    return _EN_WEEKDAY_TO_IDX.get(tl)
+
+
+def _most_recent_weekday_date(now: datetime, weekday: int) -> datetime:
+    """列表「周三」类：取不晚于当前时刻的最近一个该星期（最多回溯 6 天）。"""
+    d = now.date()
+    for i in range(7):
+        cand = d - timedelta(days=i)
+        if cand.weekday() == weekday:
+            return datetime(cand.year, cand.month, cand.day)
+    return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _month_day_to_iso(month: int, day: int, now: datetime) -> str:
+    """同一年 M/D；若落在今天之后则视为上一年（年末邮件在年初显示）。"""
+    y = now.year
+    try:
+        candidate = datetime(y, month, day).date()
+    except ValueError:
+        return ""
+    today = now.date()
+    if candidate > today:
+        try:
+            candidate = datetime(y - 1, month, day).date()
+        except ValueError:
+            return ""
+    return candidate.strftime("%Y-%m-%d")
+
+
+def _parse_hm_clock(s: str) -> Optional[tuple[int, int]]:
+    """从字符串末尾解析 HH:MM（可选 AM/PM）。"""
+    t = (s or "").strip()
+    if not t:
+        return None
+    m = re.search(r"(\d{1,2}):(\d{2})(?:\s*([APap][Mm]))?\s*$", t)
+    if not m:
+        return None
+    h, mi = int(m.group(1)), int(m.group(2))
+    ap = m.group(3)
+    if ap:
+        ap_l = ap.lower()
+        if ap_l == "pm" and h < 12:
+            h += 12
+        if ap_l == "am" and h == 12:
+            h = 0
+    if h > 23 or mi > 59:
+        return None
+    return (h, mi)
+
+
+def _extract_owa_time_fragment(raw: str) -> str:
+    """从长串中抽出最像 OWA 时间列的短片段（周/昨天/前天 + 时间等）。"""
+    s = raw or ""
+    if not s.strip():
+        return ""
+    patterns = [
+        r"(周[一二三四五六日天]\s+\d{1,2}:\d{2})",
+        r"((?:昨天|前天)\s*[,.，]?\s*\d{1,2}:\d{2})",
+        r"((?:Yesterday|Today)\s*,?\s*\d{1,2}:\d{2}(?:\s*[APap][Mm])?)",
+        r"((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d{1,2}:\d{2}(?:\s*[APap][Mm])?)",
+        r"((?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}\s+\d{1,2}:\d{2})",
+    ]
+    for pat in patterns:
+        m = re.search(pat, s, re.I)
+        if m:
+            return m.group(1).strip()
+    return ""
+
+
+def parse_owa_list_datetime(raw_text: str, now: Optional[datetime] = None) -> tuple[str, str]:
+    """
+    解析 OWA 列表/头部时间，返回 (展示用原文片段, 排序用字符串)。
+    排序串为 YYYY-MM-DD 或 YYYY-MM-DD HH:MM（与 parse_email_date_for_filter 兼容）。
+    """
+    if now is None:
+        now = datetime.now()
+    s0 = (raw_text or "").strip()
+    if not s0:
+        return "", ""
+
+    # 长串：只取 ISO 日期或内嵌时间片段，避免误用主题里的活动日期
+    if len(s0) > 120:
+        iso = _extract_date_from_line(s0) or _extract_date_from_line_safe(s0, max_line_len=300)
+        if iso:
+            return (iso, iso)
+        frag = _extract_owa_time_fragment(s0)
+        if frag:
+            return parse_owa_list_datetime(frag, now)
+        return "", ""
+
+    s = s0
+    full = _extract_date_from_line(s) or _extract_date_from_line_safe(
+        s, max_line_len=min(len(s), 120)
+    )
+    if full:
+        return (full, full)
+
+    frag2 = _extract_owa_time_fragment(s)
+    if frag2 and frag2 != s:
+        return parse_owa_list_datetime(frag2, now)
+
+    # --- 复合：周五 15:38 ---
+    m_wd_cn = re.match(
+        r"^(周[一二三四五六日天])\s+(\d{1,2}):(\d{2})\s*$",
+        s.strip(),
+    )
+    if m_wd_cn:
+        wk = m_wd_cn.group(1)
+        h, mi = int(m_wd_cn.group(2)), int(m_wd_cn.group(3))
+        wd_idx = _CN_WEEKDAY_TO_IDX.get(wk)
+        if wd_idx is not None and h <= 23 and mi <= 59:
+            ddt = _most_recent_weekday_date(now, wd_idx)
+            dt = ddt.replace(hour=h, minute=mi, second=0, microsecond=0)
+            sk = dt.strftime("%Y-%m-%d %H:%M")
+            return (s.strip(), sk)
+
+    # --- 复合：昨天 14:11 / 昨天, 14:11 ---
+    m_y = re.match(r"^(昨天|前天)\s*[,.，]?\s*(\d{1,2}):(\d{2})\s*$", s.strip())
+    if m_y:
+        days_back = 1 if m_y.group(1) == "昨天" else 2
+        h, mi = int(m_y.group(2)), int(m_y.group(3))
+        if h <= 23 and mi <= 59:
+            base = (now - timedelta(days=days_back)).replace(
+                hour=h, minute=mi, second=0, microsecond=0
+            )
+            sk = base.strftime("%Y-%m-%d %H:%M")
+            return (s.strip(), sk)
+
+    # --- English Yesterday / Today + time ---
+    s_low = s.lower().strip()
+    m_en = re.match(
+        r"^(yesterday|today)\s*,?\s*(\d{1,2}):(\d{2})(?:\s*([ap]m))?\s*$",
+        s_low,
+        re.I,
+    )
+    if m_en:
+        h, mi = int(m_en.group(2)), int(m_en.group(3))
+        ap = m_en.group(4)
+        if ap:
+            if ap.lower() == "pm" and h < 12:
+                h += 12
+            if ap.lower() == "am" and h == 12:
+                h = 0
+        days_back = 1 if m_en.group(1).lower() == "yesterday" else 0
+        base = (now - timedelta(days=days_back)).replace(
+            hour=h, minute=mi, second=0, microsecond=0
+        )
+        sk = base.strftime("%Y-%m-%d %H:%M")
+        return (s.strip(), sk)
+
+    # --- English weekday + time: Mon 3:45 PM ---
+    m_wd_en = re.match(
+        r"^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2}):(\d{2})(?:\s*([APap][Mm]))?\s*$",
+        s.strip(),
+        re.I,
+    )
+    if m_wd_en:
+        tl = m_wd_en.group(1).lower()
+        wd_map = {
+            "mon": 0,
+            "tue": 1,
+            "wed": 2,
+            "thu": 3,
+            "fri": 4,
+            "sat": 5,
+            "sun": 6,
+        }
+        wd_idx = wd_map.get(tl)
+        if wd_idx is not None:
+            h, mi = int(m_wd_en.group(2)), int(m_wd_en.group(3))
+            ap = m_wd_en.group(4)
+            if ap:
+                ap_l = ap.lower()
+                if ap_l == "pm" and h < 12:
+                    h += 12
+                if ap_l == "am" and h == 12:
+                    h = 0
+            if h <= 23 and mi <= 59:
+                ddt = _most_recent_weekday_date(now, wd_idx)
+                dt = ddt.replace(hour=h, minute=mi, second=0, microsecond=0)
+                sk = dt.strftime("%Y-%m-%d %H:%M")
+                return (s.strip(), sk)
+
+    # --- M/D HH:MM ---
+    m_md_t = re.match(r"^(\d{1,2})[/-](\d{1,2})\s+(\d{1,2}):(\d{2})\s*$", s.strip())
+    if m_md_t:
+        mo, d, h, mi = (
+            int(m_md_t.group(1)),
+            int(m_md_t.group(2)),
+            int(m_md_t.group(3)),
+            int(m_md_t.group(4)),
+        )
+        ymd = _month_day_to_iso(mo, d, now)
+        if ymd and h <= 23 and mi <= 59:
+            y, mo2, da = map(int, ymd.split("-"))
+            dt = datetime(y, mo2, da, h, mi, 0)
+            return (s.strip(), dt.strftime("%Y-%m-%d %H:%M"))
+
+    # --- 3月28日 15:38 ---
+    m_cn_md_t = re.match(
+        r"^(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})\s*$",
+        s.strip(),
+    )
+    if m_cn_md_t:
+        mo, d = int(m_cn_md_t.group(1)), int(m_cn_md_t.group(2))
+        h, mi = int(m_cn_md_t.group(3)), int(m_cn_md_t.group(4))
+        ymd = _month_day_to_iso(mo, d, now)
+        if ymd and h <= 23 and mi <= 59:
+            y, mo2, da = map(int, ymd.split("-"))
+            dt = datetime(y, mo2, da, h, mi, 0)
+            return (s.strip(), dt.strftime("%Y-%m-%d %H:%M"))
+
+    # 仅时间 -> 今天 + 时间
+    if _line_looks_like_clock_time(s):
+        hm = _parse_hm_clock(s)
+        if hm:
+            h, mi = hm
+            dt = now.replace(hour=h, minute=mi, second=0, microsecond=0)
+            return (s.strip(), dt.strftime("%Y-%m-%d %H:%M"))
+        return (s.strip(), now.strftime("%Y-%m-%d"))
+
+    if len(s) > 48:
+        return "", ""
+
+    if s in ("昨天",) or s_low == "yesterday":
+        d = (now - timedelta(days=1)).date().strftime("%Y-%m-%d")
+        return (s, d)
+    if s in ("前天",):
+        d = (now - timedelta(days=2)).date().strftime("%Y-%m-%d")
+        return (s, d)
+
+    wd = _parse_weekday_token(s)
+    if wd is not None:
+        d = _most_recent_weekday_date(now, wd).strftime("%Y-%m-%d")
+        return (s, d)
+
+    m = re.match(r"^(\d{1,2})[/-](\d{1,2})$", s)
+    if m:
+        mo, d = int(m.group(1)), int(m.group(2))
+        iso = _month_day_to_iso(mo, d, now)
+        if iso:
+            return (s, iso)
+
+    m3 = re.match(
+        r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2}),?\s*$",
+        s,
+        re.I,
+    )
+    if m3:
+        mon_s = m3.group(1).title()[:3]
+        try:
+            mo = [x.lower() for x in month_abbr].index(mon_s.lower())
+            d = int(m3.group(2))
+            iso = _month_day_to_iso(mo, d, now)
+            if iso:
+                return (s, iso)
+        except (ValueError, IndexError):
+            pass
+
+    m4 = re.match(r"^(\d{1,2})月(\d{1,2})日?$", s)
+    if m4:
+        mo, d = int(m4.group(1)), int(m4.group(2))
+        iso = _month_day_to_iso(mo, d, now)
+        if iso:
+            return (s, iso)
+
+    return "", ""
+
+
+def normalize_owa_list_date(raw_text: str, now: Optional[datetime] = None) -> str:
+    """兼容旧调用：返回排序键（日期或日期+时间）。"""
+    _, sk = parse_owa_list_datetime(raw_text, now)
+    return sk
+
+
+def pick_first_owa_datetime(candidates: list[str], now: datetime) -> tuple[str, str]:
+    """按优先级尝试候选串，返回 (展示文本, 排序键)。"""
+    seen: set[str] = set()
+    for raw in candidates:
+        if not raw or not str(raw).strip():
+            continue
+        key = raw.strip()[:200]
+        if key in seen:
+            continue
+        seen.add(key)
+        disp, sk = parse_owa_list_datetime(raw.strip(), now)
+        if sk:
+            return (disp or raw.strip()[:80], sk)
+    return "", ""
+
+
+def _line_looks_like_metadata_date_token(line: str) -> bool:
+    """仅用于 inner_text 行：短且像列表日期列，而非主题/预览长句。"""
+    s = (line or "").strip()
+    if not s:
+        return False
+    if len(s) <= 64:
+        if re.match(r"^周[一二三四五六日天]\s+\d{1,2}:\d{2}\s*$", s):
+            return True
+        if re.match(r"^(昨天|前天)\s*[,.，]?\s*\d{1,2}:\d{2}\s*$", s):
+            return True
+        if re.match(
+            r"^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d{1,2}:\d{2}(\s*[APap][Mm])?\s*$",
+            s,
+            re.I,
+        ):
+            return True
+    if len(s) > 48:
+        return False
+    if _line_looks_like_clock_time(s):
+        return True
+    if _extract_date_from_line(s) or _extract_date_from_line_safe(s, max_line_len=48):
+        return True
+    if re.match(r"^\d{1,2}[/-]\d{1,2}$", s):
+        return True
+    if re.match(
+        r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s*$",
+        s,
+        re.I,
+    ):
+        return True
+    if re.match(r"^(\d{1,2})月(\d{1,2})日?$", s):
+        return True
+    if s in ("昨天", "前天") or s.lower() == "yesterday":
+        return True
+    if _parse_weekday_token(s) is not None:
+        return True
+    return False
+
+
+def _pick_datetime_from_inner_metadata_lines(
+    lines: list,
+    now: datetime,
+    *,
+    subject: str = "",
+    sender: str = "",
+) -> tuple[str, str]:
+    """仅从看起来像日期列的短行取值，避免扫到主题里的 April 6, 2026。"""
+    if not lines:
+        return "", ""
+    subj = (subject or "").strip()
+    snd = (sender or "").strip()
+    for line in reversed(lines):
+        t = line.strip()
+        if not t:
+            continue
+        if subj and t == subj:
+            continue
+        if snd and t == snd:
+            continue
+        if not _line_looks_like_metadata_date_token(t):
+            continue
+        disp, got = parse_owa_list_datetime(t, now)
+        if got:
+            return (disp or t, got)
+    return "", ""
+
+
 def _line_likely_owa_sender(line: str) -> bool:
     """OWA 列表常见：首行发件人，次行主题。"""
     s = (line or "").strip()
@@ -255,6 +660,8 @@ def _line_is_date_or_time_only(line: str) -> bool:
     if _line_looks_like_clock_time(s):
         return True
     if _extract_date_from_line_safe(s) and len(s) < 28:
+        return True
+    if _line_looks_like_metadata_date_token(s) and len(s) < 66:
         return True
     return False
 
@@ -397,10 +804,28 @@ def classify_email(sender: str, subject: str, preview: str) -> str:
 
 
 def parse_email_date_for_filter(date_str: str) -> Optional[datetime]:
-    """将列表解析出的日期字符串转为可比较的 datetime（当天 0 点），无法解析则 None。"""
+    """
+    将列表解析出的日期字符串转为可比较的 datetime（当天 0 点），无法解析则 None。
+    支持 YYYY-MM-DD、YYYY-MM-DD HH:MM；兼容仅含时间的旧字符串。
+    """
     if not date_str or not str(date_str).strip():
         return None
     d = str(date_str).strip().replace("/", "-")
+    m = re.match(
+        r"^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{1,2})\s*$",
+        d,
+    )
+    if m:
+        try:
+            return datetime(
+                int(m.group(1)),
+                int(m.group(2)),
+                int(m.group(3)),
+                int(m.group(4)),
+                int(m.group(5)),
+            )
+        except (ValueError, TypeError):
+            pass
     try:
         parts = d.split("-")
         if len(parts) == 3:
@@ -413,28 +838,28 @@ def parse_email_date_for_filter(date_str: str) -> Optional[datetime]:
     return None
 
 
-def _best_date_from_lines(lines: list) -> str:
-    """从底部向上找元数据行上的日期，减少预览正文误匹配。"""
-    if not lines:
-        return ""
-    for line in reversed(lines):
-        got = _extract_date_from_line_safe(line)
-        if got:
-            return got
-    for line in reversed(lines):
-        got = _extract_date_from_line(line)
-        if got and len(line) <= 52:
-            return got
-    for line in reversed(lines):
-        if _line_looks_like_clock_time(line):
-            return datetime.now().strftime("%Y-%m-%d")
-    # 紧凑行：日期只在最后一行片段里且整行较长（如「…3/21/2025」）
-    tail = " ".join(lines[-2:]) if len(lines) >= 2 else lines[-1]
-    if tail and len(tail) <= 200:
-        got = _extract_date_from_line(tail)
-        if got:
-            return got
-    return ""
+def sort_key_for_list_date(raw_date: str) -> datetime:
+    """search_emails 排序：与 parse_email_date_for_filter 一致，无法解析则置为很早日期。"""
+    pd = parse_email_date_for_filter(str(raw_date or ""))
+    return pd if pd is not None else datetime(1900, 1, 1)
+
+
+def merge_list_and_pane_datetime(
+    list_sort: str,
+    list_disp: str,
+    pane_sort: str,
+    pane_disp: str,
+) -> tuple[str, str]:
+    """列表解析优先；若列表无排序键则用阅读窗格头部。返回 (展示文本, 排序键)。"""
+    ls = (list_sort or "").strip()
+    ld = (list_disp or "").strip()
+    ps = (pane_sort or "").strip()
+    pd = (pane_disp or "").strip()
+    if ls:
+        return (ld or ls, ls)
+    if ps:
+        return (pd or ps, ps)
+    return ("", "")
 
 
 _ROW_DATE_DOM_JS = """(el) => {
@@ -582,26 +1007,27 @@ async def _prepare_owa_mail_list_frame(page, keyword: str, config: dict = None):
 async def _parse_list_item_row(item, config: dict = None) -> Optional[dict]:
     """从列表项 locator 解析主题、日期、链接；失败或空主题返回 None。"""
     try:
-        date_str = ""
+        now = datetime.now()
+        date_candidates: list[str] = []
+
         try:
             if await item.locator("time[datetime]").count() > 0:
                 iso = await item.locator("time[datetime]").first.get_attribute("datetime")
                 if iso and len(iso) >= 10:
-                    date_str = iso[:10].replace("/", "-")
+                    date_candidates.append(iso[:10].replace("/", "-"))
         except Exception:
             pass
 
-        if not date_str:
-            date_str = await _dom_date_from_list_row(item)
+        dom_d = await _dom_date_from_list_row(item)
+        if dom_d:
+            date_candidates.append(dom_d)
 
         sel_date = (config or {}).get("selectors", {}).get("email_date")
-        if not date_str and sel_date:
+        if sel_date:
             try:
                 dt = await item.locator(sel_date).first.inner_text(timeout=600)
                 if dt and dt.strip():
-                    date_str = _extract_date_from_line(dt.strip()) or _extract_date_from_line_safe(
-                        dt.strip(), max_line_len=80
-                    )
+                    date_candidates.append(dt.strip())
             except Exception:
                 pass
 
@@ -639,23 +1065,33 @@ async def _parse_list_item_row(item, config: dict = None) -> Optional[dict]:
         if not subject:
             subject = _infer_owa_list_subject(lines)
 
-        if not date_str and row_aria.strip():
-            date_str = _extract_date_from_line(row_aria) or _extract_date_from_line_safe(
-                row_aria, max_line_len=220
+        for ln in lines:
+            frag_ln = _extract_owa_time_fragment(ln)
+            if frag_ln:
+                date_candidates.append(frag_ln)
+
+        if row_aria.strip():
+            date_candidates.append(row_aria.strip())
+
+        try:
+            row_title = await item.get_attribute("title")
+            if row_title and row_title.strip():
+                date_candidates.append(row_title.strip())
+        except Exception:
+            pass
+
+        date_display, date_str = pick_first_owa_datetime(date_candidates, now)
+
+        if not date_str:
+            snd_guess = ""
+            if lines and _line_likely_owa_sender(lines[0]):
+                snd_guess = lines[0].strip()
+            date_display, date_str = _pick_datetime_from_inner_metadata_lines(
+                lines,
+                now,
+                subject=subject.strip() if subject else "",
+                sender=snd_guess,
             )
-
-        if not date_str:
-            date_str = _best_date_from_lines(lines)
-
-        if not date_str:
-            try:
-                rt = await item.get_attribute("title")
-                if rt:
-                    date_str = _extract_date_from_line(rt) or _extract_date_from_line_safe(
-                        rt, max_line_len=120
-                    )
-            except Exception:
-                pass
 
         href = ""
         try:
@@ -673,9 +1109,11 @@ async def _parse_list_item_row(item, config: dict = None) -> Optional[dict]:
         if not subject.strip():
             return None
         sender, preview = _infer_sender_and_preview(lines, subject.strip())
+        disp_out = (date_display or date_str or "").strip()
         return {
             "subject": subject.strip(),
             "date_str": date_str,
+            "date_display": disp_out,
             "href": href,
             "raw_date": date_str,
             "sender": sender,
@@ -804,12 +1242,14 @@ def format_human_email_fragment(
     body: str,
     *,
     sender: str = "",
+    date_display: str = "",
     part_index: int = 1,
     part_total: int = 1,
 ) -> str:
     """仅自然语言：主题、发件人、日期、正文。续段用一句人话衔接，无机器分隔符。"""
     subject = (subject or "").strip() or "无主题"
-    date = (date or "").strip() or "无日期"
+    # Prefer normalized sort key (YYYY-MM-DD / YYYY-MM-DD HH:MM) for LLM so merge step can echo ISO dates.
+    disp = (date or date_display or "").strip() or "无日期"
     sender = (sender or "").strip()
     body = (body or "").strip()
     lines: list = []
@@ -819,7 +1259,7 @@ def format_human_email_fragment(
     lines.append(f"主题：{subject}")
     if sender:
         lines.append(f"发件人：{sender}")
-    lines.append(f"日期：{date}")
+    lines.append(f"日期：{disp}")
     lines.append("")
     lines.append(body)
     return "\n".join(lines)
@@ -853,6 +1293,7 @@ def build_per_email_analysis_prompt(
 若用户指令未规定格式，默认按（每个字段必须单独占一行，只写该字段内容；多封邮件之间空一行）：
 - 邮件标题：
 - 发件人：（优先使用邮件元数据中已给出的「发件人」字段；若元数据未提供则从正文推断；均无则说明未提供）
+- 发件日期：（优先使用邮件元数据中已给出的「日期」行；与元数据一致，勿编造；无则写「未提供」）
 - 内容总结：
 - 重要程度：（1-5 星）
 
@@ -882,9 +1323,10 @@ def build_final_merge_prompt(
 
 【格式硬性约束（逐字遵守，不得增减修改字段名）】
 1. 第一行**必须直接**以「邮件标题：」开头（不要写任何引言、说明、序号前缀、编号或空行）。
-2. 每个邮件块恰好 4 行，字段名与冒号完全固定（半角或全角冒号均可），示例：
+2. 每个邮件块恰好 5 行，字段名与冒号完全固定（半角或全角冒号均可），示例：
 邮件标题：XXX
 发件人：XXX
+发件日期：YYYY-MM-DD 或 YYYY-MM-DD HH:MM（须与下方初步分析中的日期一致，禁止编造；无则写「未提供」）
 内容总结：XXX
 重要程度：3星
 3. 块与块之间仅用一个空行分隔，「重要程度」必须为半角 1～5 的单个数字紧跟「星」。
@@ -967,6 +1409,7 @@ async def _append_visible_list_rows(
                 {
                     "subject": meta["subject"],
                     "date_str": meta["date_str"],
+                    "date_display": meta.get("date_display") or meta["date_str"],
                     "href": meta["href"],
                     "raw_date": meta["raw_date"],
                     "sender": meta.get("sender") or "",
@@ -1095,25 +1538,9 @@ async def search_emails(
         )
         print(f"日常模式找到 {len(mail_list)} 个邮件列表项")
 
-    # 使用 datetime 精确排序（从新到旧）；开发者按「列表第几封」取样时应关闭，以保持与收件箱从上到下顺序一致
-    def parse_date(d):
-        if not d:
-            return datetime(1900, 1, 1)
-        try:
-            # 支持 2025/12/22、2025-12-22、2025/12/2 等格式
-            d = d.replace('/', '-').strip()
-            if len(d.split('-')) == 3:
-                return datetime.strptime(d, '%Y-%m-%d')
-            # 如果包含时间格式（当天邮件），视为今天
-            elif re.search(r'\d{1,2}:\d{2}', d):
-                return datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-            else:
-                return datetime(1900, 1, 1)
-        except:
-            return datetime(1900, 1, 1)
-
+    # 使用 datetime 精确排序（从新到旧）；与 parse_email_date_for_filter 同一套解析
     if sort_by_date:
-        mail_list.sort(key=lambda x: parse_date(x["raw_date"]), reverse=True)
+        mail_list.sort(key=lambda x: sort_key_for_list_date(x["raw_date"]), reverse=True)
     final_items = mail_list[:max_emails]
 
     emails = []
@@ -1122,6 +1549,7 @@ async def search_emails(
             {
                 "subject": m["subject"],
                 "date": m["date_str"],
+                "date_display": m.get("date_display") or m["date_str"],
                 "href": m["href"],
                 "locator": m["locator"],
                 "convid": (m.get("convid") or ""),
@@ -1129,7 +1557,9 @@ async def search_emails(
                 "preview": m.get("preview") or "",
             }
         )
-        print(f"最终邮件 {len(emails)}: {m['subject'][:75]} | 日期: {m['date_str']}")
+        print(
+            f"最终邮件 {len(emails)}: {m['subject'][:75]} | 日期: {m.get('date_display') or m['date_str']}"
+        )
 
     print(f"最终提取到最近前 {len(emails)} 封邮件")
     return emails
@@ -1618,6 +2048,51 @@ async def _activate_mail_item(
             pass
 
 
+_READING_PANE_HEADER_TIME_JS = """() => {
+  const roots = document.querySelectorAll(
+    '[id*="ReadingPane" i], [class*="ReadingPane" i], [data-app-section="MessageReading"], [aria-label*="Reading Pane" i], [aria-label*="阅读窗格"]'
+  );
+  for (const root of roots) {
+    try {
+      if (!root.offsetParent) continue;
+    } catch (e) {
+      continue;
+    }
+    const times = root.querySelectorAll("time[datetime]");
+    for (const t of times) {
+      const v = (t.getAttribute("datetime") || "").trim();
+      if (v.length >= 10) return v;
+    }
+    const head = root.querySelector(
+      '[class*="Header"], [class*="header"], [data-testid*="MessageHeader"]'
+    );
+    if (head) {
+      const tx = (head.innerText || "").trim().slice(0, 2500);
+      const lines = tx.split(/\\r?\\n/).map((l) => l.trim()).filter(Boolean);
+      for (const ln of lines.slice(0, 18)) {
+        if (
+          /(昨天|前天|周[一二三四五六日天]|Today|Yesterday|Mon|Tue|Wed|Thu|Fri|Sat|Sun)\\b/.test(
+            ln
+          ) &&
+          /\\d{1,2}:\\d{2}/.test(ln)
+        )
+          return ln;
+      }
+      if (lines.length) return lines.slice(0, 6).join(" | ");
+    }
+  }
+  return "";
+}"""
+
+
+async def _read_reading_pane_header_raw(page) -> str:
+    try:
+        v = await page.evaluate(_READING_PANE_HEADER_TIME_JS)
+        return (v or "").strip()
+    except Exception:
+        return ""
+
+
 async def extract_full_body(
     page,
     item_locator,
@@ -1625,7 +2100,12 @@ async def extract_full_body(
     expected_subject: str = "",
     fast_activation: bool = False,
     extra_reading_pane_rounds: int = 0,
-) -> str:
+) -> tuple[str, str, str]:
+    """
+    返回 (正文, 阅读窗格头部时间展示文本, 阅读窗格时间排序键)。
+    排序键可能为空；由调用方与列表解析结果合并。
+    """
+    pane_disp, pane_sort = "", ""
     try:
         await _activate_mail_item(
             page,
@@ -1635,6 +2115,10 @@ async def extract_full_body(
         )
         if not fast_activation:
             await page.wait_for_timeout(300)
+        else:
+            await page.wait_for_timeout(200)
+        header_raw = await _read_reading_pane_header_raw(page)
+        pane_disp, pane_sort = parse_owa_list_datetime(header_raw, datetime.now())
         # OWA 阅读窗格常虚拟渲染：先滚到底再取 inner_text，否则正文在句中被截断
         base_rp = 5 if fast_activation else 14
         extra_rp = max(0, int(extra_reading_pane_rounds or 0))
@@ -1676,11 +2160,11 @@ async def extract_full_body(
         clean_text = soup.get_text(separator="\n", strip=True)
         clean_text = _strip_owa_list_chrome_from_body(clean_text)
 
-        return clean_text.strip()
+        return clean_text.strip(), pane_disp, pane_sort
 
     except Exception as e:
         print(f"提取正文失败: {e}")
-        return f"[正文提取失败: {str(e)[:100]}]"
+        return f"[正文提取失败: {str(e)[:100]}]", "", ""
 
 
 async def main() -> None:
@@ -1725,17 +2209,24 @@ async def main() -> None:
         extracted_items = []
         for i, e in enumerate(emails):
             print(f"正在提取第 {i+1} 封邮件正文: {e['subject'][:30]}...")
-            body = await extract_full_body(
+            body, pane_disp, pane_sort = await extract_full_body(
                 page,
                 e["locator"],
                 expected_subject=e.get("subject", ""),
                 fast_activation=True,
             )
+            merged_disp, merged_sort = merge_list_and_pane_datetime(
+                str(e.get("date", "") or ""),
+                str(e.get("date_display", "") or ""),
+                pane_sort,
+                pane_disp,
+            )
             extracted_items.append(
                 {
                     "index": i + 1,
                     "subject": e.get("subject", ""),
-                    "date": e.get("date", ""),
+                    "date": merged_sort or e.get("date", ""),
+                    "date_display": merged_disp or merged_sort or e.get("date", ""),
                     "sender": e.get("sender", ""),
                     "body": body,
                 }
@@ -1767,6 +2258,7 @@ async def main() -> None:
                 str(item.get("date", "") or ""),
                 str(item.get("body") or ""),
                 sender=str(item.get("sender", "") or ""),
+                date_display=str(item.get("date_display", "") or ""),
             )
             prompts.append(
                 build_per_email_analysis_prompt(

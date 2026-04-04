@@ -1,5 +1,6 @@
 """
-环境与启动预检、报错文本诊断（不 import app/main，避免拉起重依赖后才失败）。
+Environment pre-checks, startup validation, and error-text diagnosis.
+(Does NOT import app/main to avoid pulling heavy dependencies before checks.)
 """
 from __future__ import annotations
 
@@ -94,11 +95,11 @@ def diagnose_error_text(text: str) -> Diagnosis | None:
         mod = m.group(1)
         return dm(
             "MISSING_MODULE",
-            "缺少 Python 包",
-            f"当前环境缺少模块（疑似: {mod}）。",
+            "Missing Python Package",
+            f"The current environment is missing module: {mod}.",
             [
-                "使用助手「安装 pip 依赖」安装 requirements.txt。",
-                "确认本窗口使用的 Python 与启动主程序时一致（建议始终用 run_helper.bat）。",
+                'Use the "Install pip Dependencies" button to install requirements.txt.',
+                "Make sure the Python used here matches the one used to run the main app (recommended: always use run_helper.bat).",
             ],
             [f'{sys.executable} -m pip install -r "{requirements_path()}"'],
         )
@@ -111,11 +112,11 @@ def diagnose_error_text(text: str) -> Diagnosis | None:
             ),
             dm(
                 "NO_PYTHON",
-                "未找到 Python",
-                "系统里没有可用的 python 命令，或尚未安装 Python。",
+                "Python Not Found",
+                "No usable 'python' command found on this system, or Python is not installed.",
                 [
-                    "从 python.org 安装 Python 3.10+，勾选 Add Python to PATH。",
-                    "安装后重新打开本助手。",
+                    "Install Python 3.10+ from python.org and check 'Add Python to PATH'.",
+                    "After installation, reopen this helper.",
                 ],
                 [],
             ),
@@ -124,9 +125,12 @@ def diagnose_error_text(text: str) -> Diagnosis | None:
             re.compile(r"ModuleNotFoundError", re.I),
             dm(
                 "MISSING_MODULE_GENERIC",
-                "导入失败",
-                "某个 Python 模块找不到，多为依赖未装全。",
-                ["点击「安装 pip 依赖」。", "若使用虚拟环境，请先激活再启动助手。"],
+                "Import Failed",
+                "A Python module could not be found. Dependencies are likely incomplete.",
+                [
+                    'Click "Install pip Dependencies".',
+                    "If using a virtual environment, activate it before launching this helper.",
+                ],
                 [],
             ),
         ),
@@ -138,24 +142,24 @@ def diagnose_error_text(text: str) -> Diagnosis | None:
             dm(
                 "PLAYWRIGHT_EDGE",
                 "Playwright / Edge",
-                "Playwright 浏览器组件未就绪或无法启动 Edge 通道。",
+                "Playwright browser components are not ready, or the Edge channel cannot be launched.",
                 [
-                    "点击「安装 Playwright 浏览器」。",
-                    "确认本机已安装 Microsoft Edge。",
+                    'Click "Install Playwright Browser".',
+                    "Make sure Microsoft Edge is installed on this machine.",
                 ],
                 [f'"{sys.executable}" -m playwright install msedge'],
             ),
         ),
         (
             re.compile(
-                r"Address already in use|10048|Only one usage of each socket address|通常每个套接字地址",
+                r"Address already in use|10048|Only one usage of each socket address",
                 re.I,
             ),
             dm(
                 "PORT_IN_USE",
-                "端口 8001 被占用",
-                "8001 已被占用，无法再起一个 Web 服务。",
-                ["关掉之前运行主程序的黑窗口，或结束占用端口的进程。"],
+                "Port 8001 In Use",
+                "Port 8001 is already occupied; cannot start another web service.",
+                ["Close the previous command-line window running the main app, or kill the process using port 8001."],
                 [],
             ),
         ),
@@ -166,32 +170,32 @@ def diagnose_error_text(text: str) -> Diagnosis | None:
             ),
             dm(
                 "SQLITE",
-                "数据库文件异常",
-                "无法写入或锁定 SQLite（user.db）。",
-                ["确认 src 目录可写。", "关闭其他正在运行本程序的实例。"],
+                "Database File Error",
+                "Cannot write to or lock the SQLite database (user.db).",
+                ["Make sure the src directory is writable.", "Close any other running instances of this program."],
                 [],
             ),
         ),
         (
             re.compile(
-                r"无法定位搜索框|Cookie 已过期|cookie_expired|debug_searchbox_final\.png",
+                r"cannot locate search box|Cookie expired|cookie_expired|debug_searchbox_final\.png",
                 re.I,
             ),
             dm(
                 "OWA_COOKIE",
-                "邮箱或 Cookie",
-                "Cookie 失效或页面结构变化。",
-                ["在网页「设置」里重新粘贴 Cookie JSON。", "参见维护指南。"],
+                "Mailbox / Cookie Issue",
+                "The cookie has expired or the page structure has changed.",
+                ['Re-paste the Cookie JSON in the web UI "Settings" page.', "Refer to the maintenance guide."],
                 [],
             ),
         ),
         (
-            re.compile(r"缺少 base_url 或 api_key", re.I),
+            re.compile(r"missing base_url or api_key|缺少 base_url 或 api_key", re.I),
             dm(
                 "LLM_CONFIG",
-                "大模型未配置",
-                "未配置 API base_url 或 api_key。",
-                ["在网页「设置」中填写密钥与接口地址。"],
+                "LLM Not Configured",
+                "The API base_url or api_key has not been configured.",
+                ['Fill in the key and endpoint URL in the web UI "Settings" page.'],
                 [],
             ),
         ),
@@ -199,9 +203,12 @@ def diagnose_error_text(text: str) -> Diagnosis | None:
             re.compile(r"Failed to launch browser after", re.I),
             dm(
                 "BROWSER_LAUNCH",
-                "浏览器启动失败",
-                "Playwright 无法拉起浏览器。",
-                ["先安装 Playwright 的 msedge 组件。", "检查 Edge 是否能手动打开。"],
+                "Browser Launch Failed",
+                "Playwright was unable to launch the browser.",
+                [
+                    "Install the Playwright msedge component first.",
+                    "Check whether Edge can be opened manually.",
+                ],
                 [f'"{sys.executable}" -m playwright install msedge'],
             ),
         ),
@@ -211,11 +218,11 @@ def diagnose_error_text(text: str) -> Diagnosis | None:
             return diag
     return dm(
         "UNKNOWN",
-        "未能精确定位",
-        "未命中内置规则。可把完整报错发给维护者，或查看 docs/README.md。",
+        "Could Not Identify Error",
+        "No built-in rule matched. Send the full error to the maintainer or consult docs/README.md.",
         [
-            "依次尝试：安装 pip 依赖 → 安装 Playwright 浏览器 → 重新检查。",
-            "确认用 run_helper.bat 启动，且未破坏项目文件夹结构。",
+            'Try in order: Install pip Dependencies → Install Playwright Browser → Re-check.',
+            "Make sure you launched via run_helper.bat and the project folder structure is intact.",
         ],
         [],
     )
@@ -230,16 +237,16 @@ def check_project_layout() -> CheckItem:
         return CheckItem(
             id="layout",
             ok=False,
-            title="项目文件不完整",
-            detail="缺少: " + ", ".join(str(m) for m in missing),
+            title="Project Files Incomplete",
+            detail="Missing: " + ", ".join(str(m) for m in missing),
             severity="error",
             fix_commands=[],
         )
     return CheckItem(
         id="layout",
         ok=True,
-        title="项目结构",
-        detail=f"根目录 {root}",
+        title="Project Structure",
+        detail=f"Root directory: {root}",
         severity="ok",
         fix_commands=[],
     )
@@ -251,15 +258,15 @@ def check_python_version() -> CheckItem:
         return CheckItem(
             id="python_ver",
             ok=False,
-            title="Python 版本",
-            detail=f"当前 {v.major}.{v.minor}，建议 3.10+。",
+            title="Python Version",
+            detail=f"Current: {v.major}.{v.minor}. Recommended: 3.10+.",
             severity="warn",
             fix_commands=[],
         )
     return CheckItem(
         id="python_ver",
         ok=True,
-        title="Python 版本",
+        title="Python Version",
         detail=f"{v.major}.{v.minor}.{v.micro} — {sys.executable}",
         severity="ok",
         fix_commands=[],
@@ -275,9 +282,9 @@ def check_venv() -> CheckItem:
         return CheckItem(
             id="venv",
             ok=True,
-            title="虚拟环境",
-            detail=".venv 已存在"
-            + ("，当前解释器已在使用。" if same else "；当前未使用 .venv，建议用 run_helper.bat 启动。"),
+            title="Virtual Environment",
+            detail=".venv exists"
+            + ("; current interpreter is using it." if same else "; not currently active — recommend launching via run_helper.bat."),
             severity="ok" if same else "warn",
             fix_commands=[],
         )
@@ -286,17 +293,17 @@ def check_venv() -> CheckItem:
         return CheckItem(
             id="venv",
             ok=True,
-            title="虚拟环境",
-            detail="venv 已存在"
-            + ("，当前解释器已在使用。" if same else "；建议用 run_helper.bat 启动。"),
+            title="Virtual Environment",
+            detail="venv exists"
+            + ("; current interpreter is using it." if same else "; recommend launching via run_helper.bat."),
             severity="ok" if same else "warn",
             fix_commands=[],
         )
     return CheckItem(
         id="venv",
         ok=True,
-        title="虚拟环境",
-        detail="未检测到 .venv / venv，正使用系统 Python。",
+        title="Virtual Environment",
+        detail="No .venv or venv detected; using system Python.",
         severity="warn",
         fix_commands=[f'"{sys.executable}" -m venv .venv'],
     )
@@ -310,8 +317,8 @@ def check_src_writable() -> CheckItem:
         return CheckItem(
             id="writable",
             ok=True,
-            title="src 目录可写",
-            detail="可创建 user.db。",
+            title="src Directory Writable",
+            detail="Can create user.db.",
             severity="ok",
             fix_commands=[],
         )
@@ -319,7 +326,7 @@ def check_src_writable() -> CheckItem:
         return CheckItem(
             id="writable",
             ok=False,
-            title="src 目录不可写",
+            title="src Directory Not Writable",
             detail=str(e),
             severity="error",
             fix_commands=[],
@@ -332,8 +339,8 @@ def check_pip_imports() -> CheckItem:
         return CheckItem(
             id="pip_imports",
             ok=False,
-            title="依赖检查",
-            detail="找不到 requirements.txt",
+            title="Dependency Check",
+            detail="Cannot find requirements.txt",
             severity="error",
             fix_commands=[],
         )
@@ -349,8 +356,8 @@ def check_pip_imports() -> CheckItem:
         return CheckItem(
             id="pip_imports",
             ok=False,
-            title="Python 依赖包",
-            detail="未安装: " + "; ".join(missing[:8]) + (" …" if len(missing) > 8 else ""),
+            title="Python Dependencies",
+            detail="Not installed: " + "; ".join(missing[:8]) + (" ..." if len(missing) > 8 else ""),
             severity="error",
             fix_commands=[
                 f'"{sys.executable}" -m pip install -U pip',
@@ -360,8 +367,8 @@ def check_pip_imports() -> CheckItem:
     return CheckItem(
         id="pip_imports",
         ok=True,
-        title="Python 依赖包",
-        detail="requirements 中的包均可 import。",
+        title="Python Dependencies",
+        detail="All packages in requirements.txt can be imported.",
         severity="ok",
         fix_commands=[],
     )
@@ -369,8 +376,8 @@ def check_pip_imports() -> CheckItem:
 
 def check_playwright_edge() -> CheckItem:
     """
-    在独立子进程里做 Playwright 探测。避免在 Tk 后台线程里直接调用 sync_playwright
-    （非线程安全，可能导致整个进程闪退、窗口秒关）。
+    Probe Playwright in a separate subprocess. Avoids calling sync_playwright
+    directly inside the Tk background thread (not thread-safe; may crash the process).
     """
     script = (
         "import sys\n"
@@ -392,7 +399,7 @@ def check_playwright_edge() -> CheckItem:
             [sys.executable, "-c", script],
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=30,
             cwd=str(repo_root()),
             encoding="utf-8",
             errors="replace",
@@ -402,7 +409,7 @@ def check_playwright_edge() -> CheckItem:
             id="playwright",
             ok=False,
             title="Playwright / Edge",
-            detail="检测超时（>120s），请检查网络或稍后重试。",
+            detail="Detection timed out (>30s). Check your network or try again later.",
             severity="error",
             fix_commands=[f'"{sys.executable}" -m playwright install msedge'],
         )
@@ -411,7 +418,7 @@ def check_playwright_edge() -> CheckItem:
             id="playwright",
             ok=False,
             title="Playwright / Edge",
-            detail=f"无法启动子进程检测: {e}",
+            detail=f"Cannot start subprocess for detection: {e}",
             severity="error",
             fix_commands=[],
         )
@@ -420,7 +427,7 @@ def check_playwright_edge() -> CheckItem:
             id="playwright",
             ok=True,
             title="Playwright / Edge",
-            detail="msedge 通道 headless 启动成功（子进程检测）。",
+            detail="msedge channel headless launch succeeded (subprocess check).",
             severity="ok",
             fix_commands=[],
         )
@@ -430,7 +437,7 @@ def check_playwright_edge() -> CheckItem:
             id="playwright",
             ok=False,
             title="Playwright / Edge",
-            detail=f"未安装 playwright 包: {err}",
+            detail=f"playwright package not installed: {err}",
             severity="error",
             fix_commands=[],
         )
@@ -453,16 +460,16 @@ def check_port_8001() -> CheckItem:
             return CheckItem(
                 id="port",
                 ok=True,
-                title="端口 8001",
-                detail="已有程序监听 8001（若是上次主程序，可先关闭再开新的）。",
+                title="Port 8001",
+                detail="Something is already listening on 8001 (if it's the previous main app, close it first).",
                 severity="warn",
                 fix_commands=[],
             )
         return CheckItem(
             id="port",
             ok=True,
-            title="端口 8001",
-            detail="当前空闲。",
+            title="Port 8001",
+            detail="Currently free.",
             severity="ok",
             fix_commands=[],
         )
@@ -470,29 +477,31 @@ def check_port_8001() -> CheckItem:
         sock.close()
 
 
-def run_all_checks() -> list[CheckItem]:
-    items = [
-        check_project_layout(),
-        check_python_version(),
-        check_venv(),
-        check_src_writable(),
-        check_pip_imports(),
-    ]
-    if items[-1].ok:
-        items.append(check_playwright_edge())
+def iter_all_checks() -> Iterator[CheckItem]:
+    """Yield each CheckItem as it completes so the GUI can display incrementally."""
+    yield check_project_layout()
+    yield check_python_version()
+    yield check_venv()
+    yield check_src_writable()
+    pip_item = check_pip_imports()
+    yield pip_item
+    if pip_item.ok:
+        yield check_playwright_edge()
     else:
-        items.append(
-            CheckItem(
-                id="playwright",
-                ok=False,
-                title="Playwright / Edge",
-                detail="已跳过（先装 pip 依赖）。",
-                severity="warn",
-                fix_commands=[f'"{sys.executable}" -m playwright install msedge'],
-            )
+        yield CheckItem(
+            id="playwright",
+            ok=False,
+            title="Playwright / Edge",
+            detail="Skipped (install pip dependencies first).",
+            severity="warn",
+            fix_commands=[f'"{sys.executable}" -m playwright install msedge'],
         )
-    items.append(check_port_8001())
-    return items
+    yield check_port_8001()
+
+
+def run_all_checks() -> list[CheckItem]:
+    """Convenience wrapper that collects all check results into a list."""
+    return list(iter_all_checks())
 
 
 def suggested_pip_install_command() -> list[str]:
@@ -527,4 +536,3 @@ def iter_subprocess_lines(
         yield line.rstrip("\n\r")
     proc.wait()
     yield f"[exit code {proc.returncode}]"
-
