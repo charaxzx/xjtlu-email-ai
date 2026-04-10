@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-i18n-title="title_login">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -58,21 +58,25 @@
         .err { color: #c04b55; font-size: 0.85rem; margin-top: 8px; min-height: 1.2em; }
         .links { margin-top: 16px; text-align: center; font-size: 0.88rem; }
         .links a { color: var(--accent); }
+        .lang-toggle { position: fixed; top: 16px; right: 16px; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-size: 0.82rem; cursor: pointer; color: var(--text); }
+        .lang-toggle:hover { border-color: var(--accent); color: var(--accent); }
     </style>
+    <script src="/static/i18n/i18n.js"></script>
 </head>
 <body>
+    <button class="lang-toggle" onclick="i18n.toggle()" id="langToggle" type="button" aria-label="Language"><span id="langLabel">EN</span></button>
     <div class="card">
-        <h1>登录</h1>
-        <p>使用注册时的邮箱与密码。邮箱为账号唯一标识。</p>
+        <h1 data-i18n="login.title">登录</h1>
+        <p data-i18n="login.subtitle">使用注册时的邮箱与密码。邮箱为账号唯一标识。</p>
         <form id="loginForm">
-            <label for="email">邮箱</label>
-            <input type="email" id="email" name="email" required autocomplete="username" placeholder="you@example.com">
-            <label for="password">密码</label>
-            <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="密码">
-            <button type="submit">登录</button>
+            <label for="email" data-i18n="login.email_label">邮箱</label>
+            <input type="email" id="email" name="email" required autocomplete="username" data-i18n-placeholder="login.email_placeholder" placeholder="you@example.com">
+            <label for="password" data-i18n="login.password_label">密码</label>
+            <input type="password" id="password" name="password" required autocomplete="current-password" data-i18n-placeholder="login.password_placeholder" placeholder="密码">
+            <button type="submit" data-i18n="login.btn_submit">登录</button>
             <div class="err" id="err"></div>
         </form>
-        <div class="links">还没有账号？<a href="/register">注册</a></div>
+        <div class="links"><span data-i18n="login.no_account">还没有账号？</span><a href="/register" data-i18n="login.register_link">注册</a></div>
     </div>
     <script>
         document.getElementById("loginForm").addEventListener("submit", async (e) => {
@@ -92,7 +96,7 @@
                 window.location.href = "/";
                 return;
             }
-            err.textContent = data.message || "登录失败";
+            err.textContent = data.message || i18n.t("login.error_default");
         });
     </script>
 </body>

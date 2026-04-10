@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-i18n-title="title_register">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -58,23 +58,27 @@
         .err { color: #c04b55; font-size: 0.85rem; margin-top: 8px; min-height: 1.2em; }
         .links { margin-top: 16px; text-align: center; font-size: 0.88rem; }
         .links a { color: var(--accent); }
+        .lang-toggle { position: fixed; top: 16px; right: 16px; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-size: 0.82rem; cursor: pointer; color: var(--text); }
+        .lang-toggle:hover { border-color: var(--accent); color: var(--accent); }
     </style>
+    <script src="/static/i18n/i18n.js"></script>
 </head>
 <body>
+    <button class="lang-toggle" onclick="i18n.toggle()" id="langToggle" type="button" aria-label="Language"><span id="langLabel">EN</span></button>
     <div class="card">
-        <h1>注册</h1>
-        <p>用户名用于显示；邮箱为唯一账号，不可重复。</p>
+        <h1 data-i18n="register.title">注册</h1>
+        <p data-i18n="register.subtitle">用户名用于显示；邮箱为唯一账号，不可重复。</p>
         <form id="regForm">
-            <label for="username">用户名</label>
-            <input type="text" id="username" name="username" required autocomplete="nickname" placeholder="显示名称">
-            <label for="email">邮箱</label>
-            <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
-            <label for="password">密码（至少 6 位）</label>
-            <input type="password" id="password" name="password" required autocomplete="new-password" minlength="6" placeholder="密码">
-            <button type="submit">注册并登录</button>
+            <label for="username" data-i18n="register.username_label">用户名</label>
+            <input type="text" id="username" name="username" required autocomplete="nickname" data-i18n-placeholder="register.username_placeholder" placeholder="显示名称">
+            <label for="email" data-i18n="register.email_label">邮箱</label>
+            <input type="email" id="email" name="email" required autocomplete="email" data-i18n-placeholder="register.email_placeholder" placeholder="you@example.com">
+            <label for="password" data-i18n="register.password_label">密码（至少 6 位）</label>
+            <input type="password" id="password" name="password" required autocomplete="new-password" minlength="6" data-i18n-placeholder="register.password_placeholder" placeholder="密码">
+            <button type="submit" data-i18n="register.btn_submit">注册并登录</button>
             <div class="err" id="err"></div>
         </form>
-        <div class="links">已有账号？<a href="/login">登录</a></div>
+        <div class="links"><span data-i18n="register.has_account">已有账号？</span><a href="/login" data-i18n="register.login_link">登录</a></div>
     </div>
     <script>
         document.getElementById("regForm").addEventListener("submit", async (e) => {
@@ -95,7 +99,7 @@
                 window.location.href = "/";
                 return;
             }
-            err.textContent = data.message || "注册失败";
+            err.textContent = data.message || i18n.t("register.error_default");
         });
     </script>
 </body>
