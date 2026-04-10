@@ -52,6 +52,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Global state to hold browser instance and search results
+
+
 class AppState:
     def __init__(self):
         self.playwright = None
@@ -61,12 +63,14 @@ class AppState:
         self.email_results = []  # Stores full email objects including locators
         self.config = {}
         # ====== 改进二：进度状态追踪 ======
-        self.current_stage = "idle"          # idle / connecting / searching / extracting / summarizing / done / error
+        # idle / connecting / searching / extracting / summarizing / done / error
+        self.current_stage = "idle"
         self.stage_detail = ""               # 当前阶段的详细信息
         self.extracted_count = 0             # 已提取的邮件数
         self.total_count = 0                 # 待提取的邮件总数
         # 服务上线后首次进入首页时自动做一次无头 Cookie 检查（与手动「检查 Cookie」一致）
-        self.auto_cookie_status = "pending"  # pending|checking|valid|invalid|warning|error|skipped
+        # pending|checking|valid|invalid|warning|error|skipped
+        self.auto_cookie_status = "pending"
         self.auto_cookie_message = ""
         self.auto_cookie_checked_at: Optional[str] = None
         self._auto_cookie_check_ran = False  # 是否已安排过「上线自动检查一次」
@@ -78,6 +82,7 @@ class AppState:
         self.deep_scan_keyword: str = ""
         # 最近一次深度扫描的完整导出（正文+分类），与 deep_scan_result.json 同步
         self.deep_scan_export: Optional[dict] = None
+
 
 state = AppState()
 
@@ -104,6 +109,7 @@ def require_user_id(request: Request) -> int:
     if uid is None:
         raise HTTPException(status_code=401, detail="请先登录")
     return uid
+
 
 async def probe_mail_session_on_page(page) -> dict:
     """
@@ -307,6 +313,8 @@ app.add_middleware(
 )
 
 # Global Exception Handler to ensure consistent JSON responses
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
@@ -320,7 +328,8 @@ templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 # 深度模式：列表与单次分析上限（深度扫描、正文提取、前端文案一致，最多 100 封）
 DEEP_MAX_EMAILS = 100
 # 深度扫描落盘：完整正文 + 分类，供深度分析离线读取（不碰浏览器）
-DEEP_SCAN_RESULT_JSON = Path(__file__).resolve().parent / "deep_scan_result.json"
+DEEP_SCAN_RESULT_JSON = Path(
+    __file__).resolve().parent / "deep_scan_result.json"
 # 与快照同名的 JSON/PNG 导出目录（见前端提示 deep_scan_exports/）
 DEEP_SCAN_EXPORTS_DIR = Path(__file__).resolve().parent / "deep_scan_exports"
 
@@ -443,7 +452,8 @@ async def dev_style_deep_extract_to_export(
     samples: list = []
     extract_indices = range(1, n + 1)
 
-    debug_log_path = Path(__file__).resolve().parent / "dev_extract_debug.jsonl"
+    debug_log_path = Path(__file__).resolve().parent / \
+        "dev_extract_debug.jsonl"
     screenshot_dir = Path(__file__).resolve().parent / "debug_screenshots"
     if write_debug_artifacts:
         debug_log_path.write_text("", encoding="utf-8")
@@ -455,12 +465,14 @@ async def dev_style_deep_extract_to_export(
         await _reset_owa_mail_list_scroll(target_frame)
         await page.wait_for_timeout(400)
     except Exception as e:
-        logger.error("dev_style_deep_extract_to_export: prepare target_frame: %s", repr(e))
+        logger.error(
+            "dev_style_deep_extract_to_export: prepare target_frame: %s", repr(e))
         target_frame = None
 
     for ord_ in extract_indices:
         if ord_ > 1 and (ord_ - 1) % 20 == 0:
-            logger.info("dev_style_deep_extract batch cooling: sleeping 5s at ord=%s", ord_)
+            logger.info(
+                "dev_style_deep_extract batch cooling: sleeping 5s at ord=%s", ord_)
             state.stage_detail = f"{ui_label}防热保护休眠 5秒 (已完成 {ord_ - 1} 封)…"
             await asyncio.sleep(5)
 
@@ -487,7 +499,8 @@ async def dev_style_deep_extract_to_export(
                     fast_activation=True,
                 )
             except Exception as exc:
-                logger.warning("dev_style_deep_extract ord=%s: %s", ord_, repr(exc))
+                logger.warning(
+                    "dev_style_deep_extract ord=%s: %s", ord_, repr(exc))
                 err = str(exc)[:200]
                 body = f"[正文提取失败: {err}]"
 
@@ -553,7 +566,7 @@ async def dev_style_locator_sequential(target_frame, cvid: str):
     """
     if not (cvid or "").strip() or target_frame is None:
         return None
-        
+
     async def _scan_down(max_s):
         for step in range(max_s):
             rows = target_frame.locator(_LIST_ITEM_SELECTOR)
@@ -562,7 +575,8 @@ async def dev_style_locator_sequential(target_frame, cvid: str):
                 row = rows.nth(i)
                 v = await row.get_attribute("data-convid")
                 if v == cvid:
-                    precise_loc = target_frame.locator(f'[data-convid="{cvid}"]').first
+                    precise_loc = target_frame.locator(
+                        f'[data-convid="{cvid}"]').first
                     await precise_loc.scroll_into_view_if_needed()
                     await asyncio.sleep(0.045)
                     return precise_loc
@@ -579,22 +593,24 @@ async def dev_style_locator_sequential(target_frame, cvid: str):
         found = await _scan_down(80)
         if found:
             return found
-            
+
         # 第二阶段：没找到，说明可能在上面，或者刚才没刷出来，兜底重置回顶再找一遍
-        logger.warning(f"dev_style_locator_sequential missed {cvid[:20]}, triggering fallback to top...")
+        logger.warning(
+            f"dev_style_locator_sequential missed {cvid[:20]}, triggering fallback to top...")
         await _reset_owa_mail_list_scroll(target_frame)
         await asyncio.sleep(0.5)
         return await _scan_down(80)
-        
+
     except Exception as e:
         logger.warning("dev_style_locator_sequential failed: %s", repr(e))
-        
+
     return None
 
 
 # Pydantic models for request bodies
 class SearchRequest(BaseModel):
     keyword: str
+
 
 class ExecuteRequest(BaseModel):
     keyword: str = ""
@@ -623,7 +639,8 @@ class DevExtractSampleBodiesRequest(BaseModel):
 class DevExtractDailyBodiesRequest(BaseModel):
     """开发者测试2：与日常模式相同流程（daily search_emails + 逐封 extract_full_body），不调 LLM。"""
     keyword: str = ""
-    email_count: int = Field(default=DAILY_MAX_EMAILS, ge=1, le=DAILY_MAX_EMAILS)
+    email_count: int = Field(default=DAILY_MAX_EMAILS,
+                             ge=1, le=DAILY_MAX_EMAILS)
 
 
 class ConfigUpdateRequest(BaseModel):
@@ -643,6 +660,7 @@ class RegisterRequest(BaseModel):
     username: str
     email: str
     password: str
+
 
 class UpdateUsernameRequest(BaseModel):
     new_username: str
@@ -664,14 +682,14 @@ class DigestSettingsRequest(BaseModel):
 async def login_page(request: Request):
     if _session_user_id(request) is not None:
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request, "login.html", {"request": request})
 
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
     if _session_user_id(request) is not None:
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("register.html", {"request": request})
+    return templates.TemplateResponse(request, "register.html", {"request": request})
 
 
 @app.post("/api/auth/login")
@@ -727,6 +745,7 @@ async def api_me(request: Request):
         "username": u["username"],
         "email": u["email"],
     }
+
 
 @app.post("/api/auth/update_username")
 async def api_update_username(request: Request, body: UpdateUsernameRequest):
@@ -978,7 +997,8 @@ async def ensure_browser(max_retries: int = 2):
 
     last_error = None
     for attempt in range(1, max_retries + 1):
-        logger.info(f"Initializing browser... (attempt {attempt}/{max_retries})")
+        logger.info(
+            f"Initializing browser... (attempt {attempt}/{max_retries})")
         state.current_stage = "connecting"
         state.stage_detail = f"正在启动浏览器 (第 {attempt} 次尝试)" if attempt > 1 else "正在启动浏览器..."
         try:
@@ -1011,7 +1031,8 @@ async def ensure_browser(max_retries: int = 2):
     # 所有重试都失败了
     state.current_stage = "error"
     state.stage_detail = f"浏览器启动失败: {repr(last_error)}"
-    raise HTTPException(status_code=500, detail=f"Failed to launch browser after {max_retries} attempts: {repr(last_error)}")
+    raise HTTPException(
+        status_code=500, detail=f"Failed to launch browser after {max_retries} attempts: {repr(last_error)}")
 
 
 # ====== 改进二：进度状态 API ======
@@ -1030,6 +1051,8 @@ async def get_status(request: Request):
     }
 
 # ====== 浏览器预启动开关 API ======
+
+
 class PrelaunchRequest(BaseModel):
     enabled: bool
 
@@ -1083,7 +1106,8 @@ async def get_config(request: Request):
     current_config = auth_db.load_user_config(uid)
 
     cookies_list = current_config.get("email", {}).get("cookies", [])
-    cookies_str = json.dumps(cookies_list, indent=2, ensure_ascii=False) if cookies_list else ""
+    cookies_str = json.dumps(cookies_list, indent=2,
+                             ensure_ascii=False) if cookies_list else ""
 
     return {
         "ai_base_url": current_config.get("ai", {}).get("base_url", ""),
@@ -1131,7 +1155,8 @@ async def update_config(request: Request, req: ConfigUpdateRequest):
             if state.playwright:
                 await state.playwright.stop()
         except Exception as cleanup_err:
-            logger.warning("Browser cleanup after config save: %s", cleanup_err)
+            logger.warning(
+                "Browser cleanup after config save: %s", cleanup_err)
         finally:
             state.context = None
             state.browser = None
@@ -1238,7 +1263,8 @@ async def interactive_mail_login_start(request: Request):
         await close_browser_resources()
         cfg = auth_db.load_user_config(uid)
         email_cfg = cfg.get("email", {}) or {}
-        mail_url = (email_cfg.get("url") or "https://mail.xjtlu.edu.cn/owa").strip()
+        mail_url = (email_cfg.get("url")
+                    or "https://mail.xjtlu.edu.cn/owa").strip()
         if not mail_url:
             return JSONResponse(
                 status_code=400,
@@ -1276,7 +1302,8 @@ async def interactive_mail_login_start(request: Request):
                 pass
             return JSONResponse(
                 status_code=500,
-                content={"status": "error", "message": f"无法打开浏览器: {str(e)[:120]}"},
+                content={"status": "error",
+                         "message": f"无法打开浏览器: {str(e)[:120]}"},
             )
 
         state.playwright = pw
@@ -1342,7 +1369,8 @@ async def interactive_mail_login_complete(request: Request):
         if not normalized:
             return JSONResponse(
                 status_code=400,
-                content={"status": "error", "message": "未能读取到任何 Cookie，请确认已登录成功。"},
+                content={"status": "error",
+                         "message": "未能读取到任何 Cookie，请确认已登录成功。"},
             )
 
         cfg = auth_db.load_user_config(uid)
@@ -1466,7 +1494,8 @@ async def deep_scan(http_request: Request, payload: DeepScanRequest):
             state.stage_detail = ""
             return JSONResponse(
                 status_code=200,
-                content={"status": "cookie_expired", "message": str(e), "emails": []},
+                content={"status": "cookie_expired",
+                         "message": str(e), "emails": []},
             )
         except Exception as e:
             logger.exception("deep_scan")
@@ -1495,7 +1524,8 @@ async def deep_scan(http_request: Request, payload: DeepScanRequest):
             "indices": deep_export_doc.get("indices"),
             "samples": deep_export_doc["samples"],
         }
-        export_stem = _deep_scan_export_stem_from_iso(str(export_to_save.get("exported_at") or ""))
+        export_stem = _deep_scan_export_stem_from_iso(
+            str(export_to_save.get("exported_at") or ""))
         snapshot_saved = False
         try:
             _save_deep_scan_result_json(export_to_save)
@@ -1609,7 +1639,7 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                 "message": "正在通过浏览器连接邮箱，请先完成「我已登录」保存会话，或点击「取消」后再开始分析。",
             },
         )
-        
+
     if state.auto_cookie_status not in ("valid", "warning"):
         return JSONResponse(
             status_code=403,
@@ -1678,7 +1708,8 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                 state.stage_detail = str(e)
                 raise
 
-        print(f"Executing task: search='{keyword or '(最新邮件)'}', instruction='{instruction}', use_indices={use_indices}")
+        print(
+            f"Executing task: search='{keyword or '(最新邮件)'}', instruction='{instruction}', use_indices={use_indices}")
 
         try:
             limit_ceiling = (
@@ -1693,15 +1724,18 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
             if payload.mode == "deep":
                 # 从内存或 deep_scan_result.json 读取正文，不访问浏览器、不再调用 dev_style_deep_extract
                 assert export_doc is not None
-                d_lo = _parse_iso_date_boundary(payload.date_from, end_of_day=False)
-                d_hi = _parse_iso_date_boundary(payload.date_to, end_of_day=True)
+                d_lo = _parse_iso_date_boundary(
+                    payload.date_from, end_of_day=False)
+                d_hi = _parse_iso_date_boundary(
+                    payload.date_to, end_of_day=True)
                 idx_order: dict = {}
                 idx_set: Optional[set] = None
                 n_list = len(export_doc["samples"])
 
                 if use_indices:
                     idxs_sorted = sorted(
-                        {i for i in (payload.indices or []) if isinstance(i, int)}
+                        {i for i in (payload.indices or [])
+                         if isinstance(i, int)}
                     )
                     if not idxs_sorted:
                         state.current_stage = "idle"
@@ -1748,7 +1782,8 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                             },
                         )
                     idx_set = set(idxs_sorted)
-                    idx_order = {idx: pos for pos, idx in enumerate(idxs_sorted)}
+                    idx_order = {idx: pos for pos,
+                                 idx in enumerate(idxs_sorted)}
 
                 state.stage_detail = (
                     f"〔深度分析〕从本地缓存读取正文（共 {n_list} 封，不访问浏览器）…"
@@ -1889,7 +1924,8 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                             fast_activation=False,
                         )
                     except Exception as e:
-                        logger.warning(f"Failed to extract email {i+1} body: {repr(e)}")
+                        logger.warning(
+                            f"Failed to extract email {i+1} body: {repr(e)}")
                         body = f"[正文提取失败: {str(e)[:100]}]"
                         pane_disp, pane_sort = "", ""
                         failed_count += 1
@@ -1900,7 +1936,8 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                         pane_disp,
                     )
                     final_sort = merged_sort or email.get("date", "")
-                    final_disp = merged_disp or merged_sort or email.get("date", "")
+                    final_disp = merged_disp or merged_sort or email.get(
+                        "date", "")
                     extracted_items.append(
                         {
                             "index": i + 1,
@@ -1946,7 +1983,8 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
             n = len(extracted_items)
             body_words = total_extracted_body_words(extracted_items)
             today = datetime.now().strftime("%Y-%m-%d")
-            total_batches = (n + LLM_PARALLEL_BATCH_SIZE - 1) // LLM_PARALLEL_BATCH_SIZE
+            total_batches = (n + LLM_PARALLEL_BATCH_SIZE -
+                             1) // LLM_PARALLEL_BATCH_SIZE
             logger.info(
                 f"邮件正文总词数: {body_words}；每批并发 {LLM_PARALLEL_BATCH_SIZE} 次，"
                 f"共 {total_batches} 批单封 LLM + 1 次汇总 LLM"
@@ -1977,7 +2015,7 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
 
             normalized = []
             for batch_index, start in enumerate(range(0, n, LLM_PARALLEL_BATCH_SIZE), start=1):
-                batch_prompts = prompts[start : start + LLM_PARALLEL_BATCH_SIZE]
+                batch_prompts = prompts[start: start + LLM_PARALLEL_BATCH_SIZE]
                 state.stage_detail = (
                     f"并行分析第 {batch_index}/{total_batches} 批邮件"
                     f"（本批 {len(batch_prompts)} 封）…"
@@ -1990,7 +2028,8 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                     *[run_llm_task(p) for p in batch_prompts],
                     return_exceptions=True,
                 )
-                normalized.extend(normalize_parallel_llm_result(r) for r in parallel_out)
+                normalized.extend(normalize_parallel_llm_result(r)
+                                  for r in parallel_out)
             per_email_sections = "\n\n".join(
                 f"—— 第 {i + 1} 封邮件的初步分析 ——\n{t}" for i, t in enumerate(normalized)
             )
@@ -2081,7 +2120,8 @@ async def dev_extract_sample_bodies(http_request: Request, payload: DevExtractSa
             state.stage_detail = ""
             return JSONResponse(
                 status_code=200,
-                content={"status": "cookie_expired", "message": str(e), "samples": []},
+                content={"status": "cookie_expired",
+                         "message": str(e), "samples": []},
             )
         except Exception as e:
             logger.exception("dev_extract_sample_bodies")
@@ -2202,7 +2242,8 @@ async def dev_extract_daily_bodies_no_llm(
             state.stage_detail = str(e)
             return JSONResponse(
                 status_code=500,
-                content={"status": "error", "message": str(e), "items": [], "text": ""},
+                content={"status": "error", "message": str(
+                    e), "items": [], "text": ""},
             )
 
         state.email_results = emails
@@ -2229,7 +2270,8 @@ async def dev_extract_daily_bodies_no_llm(
                     expected_subject=subj,
                 )
             except Exception as exc:
-                logger.warning("dev_extract_daily_bodies_no_llm %s: %s", i + 1, repr(exc))
+                logger.warning(
+                    "dev_extract_daily_bodies_no_llm %s: %s", i + 1, repr(exc))
                 err = str(exc)[:200]
                 body = f"[正文提取失败: {err}]"
 
@@ -2238,7 +2280,8 @@ async def dev_extract_daily_bodies_no_llm(
             )
             final_date = merged_sort or dt
             final_disp = merged_disp or merged_sort or dt
-            ok = err is None and bool(body) and not str(body).startswith("[正文提取失败")
+            ok = err is None and bool(body) and not str(
+                body).startswith("[正文提取失败")
             items.append(
                 {
                     "index": i + 1,
@@ -2294,6 +2337,7 @@ async def read_root(request: Request):
             state.auto_cookie_status = "suggest_check"
             state.auto_cookie_message = "请先验证邮箱可访问再查询哦"
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
             "request": request,
@@ -2303,15 +2347,18 @@ async def read_root(request: Request):
         },
     )
 
+
 @app.post("/api/search")
 async def search(request: SearchRequest):
     return {"status": "deprecated", "message": "Use /api/execute instead"}
 
+
 @app.post("/api/summarize")
-async def summarize(request: Request): # Changed to Request to avoid undefined model
+async def summarize(request: Request):  # Changed to Request to avoid undefined model
     return {"status": "deprecated", "message": "Use /api/execute instead"}
 
 if __name__ == "__main__":
     # Disable reload to avoid Windows subprocess loop issues
     # Use port 8001 to avoid conflicts with hung processes
-    uvicorn.run("app:app", host="127.0.0.1", port=8001, reload=False, loop="asyncio")
+    uvicorn.run("app:app", host="127.0.0.1", port=8001,
+                reload=False, loop="asyncio")
