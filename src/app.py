@@ -53,8 +53,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Global state to hold browser instance and search results
-
-
 class AppState:
     def __init__(self):
         self.playwright = None
@@ -64,14 +62,12 @@ class AppState:
         self.email_results = []  # Stores full email objects including locators
         self.config = {}
         # ====== 改进二：进度状态追踪 ======
-        # idle / connecting / searching / extracting / summarizing / done / error
-        self.current_stage = "idle"
+        self.current_stage = "idle"          # idle / connecting / searching / extracting / summarizing / done / error
         self.stage_detail = ""               # 当前阶段的详细信息
         self.extracted_count = 0             # 已提取的邮件数
         self.total_count = 0                 # 待提取的邮件总数
         # 服务上线后首次进入首页时自动做一次无头 Cookie 检查（与手动「检查 Cookie」一致）
-        # pending|checking|valid|invalid|warning|error|skipped
-        self.auto_cookie_status = "pending"
+        self.auto_cookie_status = "pending"  # pending|checking|valid|invalid|warning|error|skipped
         self.auto_cookie_message = ""
         self.auto_cookie_checked_at: Optional[str] = None
         self._auto_cookie_check_ran = False  # 是否已安排过「上线自动检查一次」
@@ -83,7 +79,6 @@ class AppState:
         self.deep_scan_keyword: str = ""
         # 最近一次深度扫描的完整导出（正文+分类），与 deep_scan_result.json 同步
         self.deep_scan_export: Optional[dict] = None
-
 
 state = AppState()
 
@@ -110,7 +105,6 @@ def require_user_id(request: Request) -> int:
     if uid is None:
         raise HTTPException(status_code=401, detail="请先登录")
     return uid
-
 
 async def probe_mail_session_on_page(page) -> dict:
     """
@@ -321,8 +315,6 @@ app.add_middleware(
 )
 
 # Global Exception Handler to ensure consistent JSON responses
-
-
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
@@ -331,13 +323,12 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 # Setup templates
-templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
-# 深度模式：列表与单次分析上限（深度扫描、正文提取、前端文案一致，最多 100 封）
-DEEP_MAX_EMAILS = 100
-# 深度扫描落盘：完整正文 + 分类，供深度分析离线读取（不碰浏览器）
-DEEP_SCAN_RESULT_JSON = Path(
-    __file__).resolve().parent / "deep_scan_result.json"
+# 深度模式列表及单次上限（扫描、提取前置的兜底，200 封）
+DEEP_MAX_EMAILS = 200
+# 深度扫描后，缓存列表，提取分离读取该缓存落盘：完整正文 + 分类，供深度分析离线读取（不碰浏览器）
+DEEP_SCAN_RESULT_JSON = Path(__file__).resolve().parent / "deep_scan_result.json"
 # 与快照同名的 JSON/PNG 导出目录（见前端提示 deep_scan_exports/）
 DEEP_SCAN_EXPORTS_DIR = Path(__file__).resolve().parent / "deep_scan_exports"
 
@@ -367,13 +358,91 @@ def _save_deep_scan_result_json(export_doc: dict) -> None:
         json.dump(export_doc, f, ensure_ascii=False, indent=2)
 
 
+def _build_deep_scan_api_success_payload(
+    export_doc: dict,
+    *,
+    snapshot_saved: bool = True,
+    export_stem: str = "",
+    message: Optional[str] = None,
+) -> dict:
+    """将 deep_scan 导出文档转为与 POST /api/deep_scan 成功时一致的前端结构。"""
+    samples = (export_doc or {}).get("samples") or []
+    kw = (export_doc.get("keyword") or "").strip()
+    out_rows = []
+    cat_counts = {c: 0 for c in EMAIL_CATEGORY_LABELS}
+    parsed_dates: list[datetime] = []
+
+    for s in samples:
+        sender = s.get("sender") or ""
+        subj = s.get("subject") or ""
+        preview = (s.get("body") or "")[:400]
+        cat = s.get("category") or classify_email(sender, subj, preview)
+        cat_counts[cat] = cat_counts.get(cat, 0) + 1
+        pd = parse_email_date_for_filter(s.get("date") or "")
+        if pd:
+            parsed_dates.append(pd)
+        cv = s.get("convid")
+        convid_str = (cv if isinstance(cv, str) else "")[:80]
+        out_rows.append(
+            {
+                "index": int(s.get("index") or 0),
+                "subject": subj,
+                "date": s.get("date") or "",
+                "sender": sender,
+                "preview": preview,
+                "category": cat,
+                "convid": convid_str,
+            }
+        )
+
+    date_min = ""
+    date_max = ""
+    if parsed_dates:
+        mn = min(parsed_dates)
+        mx = max(parsed_dates)
+        date_min = mn.strftime("%Y-%m-%d")
+        date_max = mx.strftime("%Y-%m-%d")
+
+    n = len(samples)
+    stem = (export_stem or "").strip() or _deep_scan_export_stem_from_iso(
+        str(export_doc.get("exported_at") or "")
+    )
+    msg = message
+    if msg is None:
+        msg = f"已扫描 {n} 封邮件（列表顺序与收件箱一致，正文已缓存至本地）。"
+
+    return {
+        "status": "success",
+        "message": msg,
+        "list_count": n,
+        "keyword": kw,
+        "emails": out_rows,
+        "categories": cat_counts,
+        "date_range": {"min": date_min, "max": date_max},
+        "export_stem": stem,
+        "snapshot_saved": snapshot_saved,
+    }
+
+
 DAILY_MAX_EMAILS = 10
+
+
+def _daily_dedupe_key(email: dict, final_sort: str, final_disp: str) -> str:
+    """跨关键词组合并时去重：优先 convid，其次 href，否则 subject+日期。"""
+    c = (str(email.get("convid") or "") or "").strip()
+    if c:
+        return f"cid:{c}"
+    h = (str(email.get("href") or "") or "").strip()
+    if h:
+        return f"href:{h}"
+    subj = (email.get("subject") or "").strip()
+    return f"subj:{subj}|{final_sort}|{final_disp}"
 
 
 async def dev_style_locator_for_convid_from_list_top(page, keyword: str, config: dict, cvid: str, fallback):
     """
-    与 /api/dev/extract_sample_bodies 一致：从邮件列表顶重置后向下慢滚，
-    直到 data-convid 匹配的行进入视口再返回。避免虚拟列表下缓存 locator 失效导致正文像预览/截断。
+    从邮件列表顶重置后向下慢滚，直到 data-convid 匹配的行进入视口再返回。
+    避免虚拟列表下缓存 locator 失效导致正文像预览/截断。
     """
     if not (cvid or "").strip():
         return fallback
@@ -416,7 +485,7 @@ async def dev_style_locator_for_convid_from_list_top(page, keyword: str, config:
 
 async def search_deep_emails_for_extraction(page, keyword: str, config: dict, *, max_emails: int):
     """
-    深度正文提取统一走开发者测试同款列表拉取参数。
+    深度模式列表拉取参数（与深度扫描一致）。
     深度正文提取与 deep_scan 均受 DEEP_MAX_EMAILS 约束。
     """
     return await search_emails(
@@ -441,12 +510,11 @@ async def dev_style_deep_extract_to_export(
     config: dict,
     *,
     max_list_emails: int,
-    ui_label: str = "〔开发者〕",
+    ui_label: str = "〔深度〕",
     write_debug_artifacts: bool = True,
 ) -> Tuple[dict, list]:
     """
-    与 /api/dev/extract_sample_bodies 完全同一套：拉深度列表 → 准备列表帧 →
-    顺序 convid 定位 → fast_activation 抽正文 → 组装 export 文档。
+    拉深度列表 → 准备列表帧 → 顺序 convid 定位 → fast_activation 抽正文 → 组装 export 文档。
     不写磁盘；由调用方决定是否落盘。返回 (export_doc, emails)。
     """
     kw = (keyword or "").strip()
@@ -460,8 +528,7 @@ async def dev_style_deep_extract_to_export(
     samples: list = []
     extract_indices = range(1, n + 1)
 
-    debug_log_path = Path(__file__).resolve().parent / \
-        "dev_extract_debug.jsonl"
+    debug_log_path = Path(__file__).resolve().parent / "dev_extract_debug.jsonl"
     screenshot_dir = Path(__file__).resolve().parent / "debug_screenshots"
     if write_debug_artifacts:
         debug_log_path.write_text("", encoding="utf-8")
@@ -473,14 +540,12 @@ async def dev_style_deep_extract_to_export(
         await _reset_owa_mail_list_scroll(target_frame)
         await page.wait_for_timeout(400)
     except Exception as e:
-        logger.error(
-            "dev_style_deep_extract_to_export: prepare target_frame: %s", repr(e))
+        logger.error("dev_style_deep_extract_to_export: prepare target_frame: %s", repr(e))
         target_frame = None
 
     for ord_ in extract_indices:
         if ord_ > 1 and (ord_ - 1) % 20 == 0:
-            logger.info(
-                "dev_style_deep_extract batch cooling: sleeping 5s at ord=%s", ord_)
+            logger.info("dev_style_deep_extract batch cooling: sleeping 5s at ord=%s", ord_)
             state.stage_detail = f"{ui_label}防热保护休眠 5秒 (已完成 {ord_ - 1} 封)…"
             await asyncio.sleep(5)
 
@@ -507,8 +572,7 @@ async def dev_style_deep_extract_to_export(
                     fast_activation=True,
                 )
             except Exception as exc:
-                logger.warning(
-                    "dev_style_deep_extract ord=%s: %s", ord_, repr(exc))
+                logger.warning("dev_style_deep_extract ord=%s: %s", ord_, repr(exc))
                 err = str(exc)[:200]
                 body = f"[正文提取失败: {err}]"
 
@@ -574,7 +638,7 @@ async def dev_style_locator_sequential(target_frame, cvid: str):
     """
     if not (cvid or "").strip() or target_frame is None:
         return None
-
+        
     async def _scan_down(max_s):
         for step in range(max_s):
             rows = target_frame.locator(_LIST_ITEM_SELECTOR)
@@ -583,8 +647,7 @@ async def dev_style_locator_sequential(target_frame, cvid: str):
                 row = rows.nth(i)
                 v = await row.get_attribute("data-convid")
                 if v == cvid:
-                    precise_loc = target_frame.locator(
-                        f'[data-convid="{cvid}"]').first
+                    precise_loc = target_frame.locator(f'[data-convid="{cvid}"]').first
                     await precise_loc.scroll_into_view_if_needed()
                     await asyncio.sleep(0.045)
                     return precise_loc
@@ -601,17 +664,16 @@ async def dev_style_locator_sequential(target_frame, cvid: str):
         found = await _scan_down(80)
         if found:
             return found
-
+            
         # 第二阶段：没找到，说明可能在上面，或者刚才没刷出来，兜底重置回顶再找一遍
-        logger.warning(
-            f"dev_style_locator_sequential missed {cvid[:20]}, triggering fallback to top...")
+        logger.warning(f"dev_style_locator_sequential missed {cvid[:20]}, triggering fallback to top...")
         await _reset_owa_mail_list_scroll(target_frame)
         await asyncio.sleep(0.5)
         return await _scan_down(80)
-
+        
     except Exception as e:
         logger.warning("dev_style_locator_sequential failed: %s", repr(e))
-
+        
     return None
 
 
@@ -619,12 +681,19 @@ async def dev_style_locator_sequential(target_frame, cvid: str):
 class SearchRequest(BaseModel):
     keyword: str
 
+class KeywordGroup(BaseModel):
+    """日常模式多关键词组合：每组独立关键词与封数上限（0 表示跳过该组）。"""
+
+    keyword: str = ""
+    email_count: int = Field(default=10, ge=0, le=DAILY_MAX_EMAILS)
+
 
 class ExecuteRequest(BaseModel):
     keyword: str = ""
     instruction: str
     mode: str = Field(default="daily", description="daily or deep")
     email_count: int = Field(default=10, ge=1, le=DEEP_MAX_EMAILS)
+    keyword_groups: Optional[List[KeywordGroup]] = None
     indices: Optional[List[int]] = None
     date_from: Optional[str] = None
     date_to: Optional[str] = None
@@ -632,23 +701,12 @@ class ExecuteRequest(BaseModel):
 
 class DeepScanRequest(BaseModel):
     keyword: str = ""
+    email_count: int = 200
 
 
 class DeepScanChartSaveRequest(BaseModel):
     export_stem: str = ""
     png_base64: str = ""
-
-
-class DevExtractSampleBodiesRequest(BaseModel):
-    """开发者：仅提取指定序号的完整正文，不调 LLM。"""
-    keyword: str = ""
-
-
-class DevExtractDailyBodiesRequest(BaseModel):
-    """开发者测试2：与日常模式相同流程（daily search_emails + 逐封 extract_full_body），不调 LLM。"""
-    keyword: str = ""
-    email_count: int = Field(default=DAILY_MAX_EMAILS,
-                             ge=1, le=DAILY_MAX_EMAILS)
 
 
 class ConfigUpdateRequest(BaseModel):
@@ -668,7 +726,6 @@ class RegisterRequest(BaseModel):
     username: str
     email: str
     password: str
-
 
 class UpdateUsernameRequest(BaseModel):
     new_username: str
@@ -690,14 +747,14 @@ class DigestSettingsRequest(BaseModel):
 async def login_page(request: Request):
     if _session_user_id(request) is not None:
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse(request, "login.html")
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
     if _session_user_id(request) is not None:
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse(request, "register.html")
+    return templates.TemplateResponse("register.html", {"request": request})
 
 
 @app.post("/api/auth/login")
@@ -753,7 +810,6 @@ async def api_me(request: Request):
         "username": u["username"],
         "email": u["email"],
     }
-
 
 @app.post("/api/auth/update_username")
 async def api_update_username(request: Request, body: UpdateUsernameRequest):
@@ -1005,8 +1061,7 @@ async def ensure_browser(max_retries: int = 2):
 
     last_error = None
     for attempt in range(1, max_retries + 1):
-        logger.info(
-            f"Initializing browser... (attempt {attempt}/{max_retries})")
+        logger.info(f"Initializing browser... (attempt {attempt}/{max_retries})")
         state.current_stage = "connecting"
         state.stage_detail = f"正在启动浏览器 (第 {attempt} 次尝试)" if attempt > 1 else "正在启动浏览器..."
         try:
@@ -1039,8 +1094,7 @@ async def ensure_browser(max_retries: int = 2):
     # 所有重试都失败了
     state.current_stage = "error"
     state.stage_detail = f"浏览器启动失败: {repr(last_error)}"
-    raise HTTPException(
-        status_code=500, detail=f"Failed to launch browser after {max_retries} attempts: {repr(last_error)}")
+    raise HTTPException(status_code=500, detail=f"Failed to launch browser after {max_retries} attempts: {repr(last_error)}")
 
 
 # ====== 改进二：进度状态 API ======
@@ -1059,8 +1113,6 @@ async def get_status(request: Request):
     }
 
 # ====== 浏览器预启动开关 API ======
-
-
 class PrelaunchRequest(BaseModel):
     enabled: bool
 
@@ -1114,8 +1166,7 @@ async def get_config(request: Request):
     current_config = auth_db.load_user_config(uid)
 
     cookies_list = current_config.get("email", {}).get("cookies", [])
-    cookies_str = json.dumps(cookies_list, indent=2,
-                             ensure_ascii=False) if cookies_list else ""
+    cookies_str = json.dumps(cookies_list, indent=2, ensure_ascii=False) if cookies_list else ""
 
     return {
         "ai_base_url": current_config.get("ai", {}).get("base_url", ""),
@@ -1163,8 +1214,7 @@ async def update_config(request: Request, req: ConfigUpdateRequest):
             if state.playwright:
                 await state.playwright.stop()
         except Exception as cleanup_err:
-            logger.warning(
-                "Browser cleanup after config save: %s", cleanup_err)
+            logger.warning("Browser cleanup after config save: %s", cleanup_err)
         finally:
             state.context = None
             state.browser = None
@@ -1271,8 +1321,7 @@ async def interactive_mail_login_start(request: Request):
         await close_browser_resources()
         cfg = auth_db.load_user_config(uid)
         email_cfg = cfg.get("email", {}) or {}
-        mail_url = (email_cfg.get("url")
-                    or "https://mail.xjtlu.edu.cn/owa").strip()
+        mail_url = (email_cfg.get("url") or "https://mail.xjtlu.edu.cn/owa").strip()
         if not mail_url:
             return JSONResponse(
                 status_code=400,
@@ -1308,8 +1357,7 @@ async def interactive_mail_login_start(request: Request):
                 pass
             return JSONResponse(
                 status_code=500,
-                content={"status": "error",
-                         "message": f"无法打开浏览器: {str(e)[:120]}"},
+                content={"status": "error", "message": f"无法打开浏览器: {str(e)[:120]}"},
             )
 
         # 未注入 Cookie 的首次访问经常触发 OWA/ADFS 的重定向链路，
@@ -1370,7 +1418,7 @@ async def interactive_mail_login_start(request: Request):
 
     return {
         "status": "success",
-        "message": "请在打开的窗口中登录邮箱，完成后点击「我已登录」。",
+        "message": "请在打开的 Edge 窗口中登录邮箱，完成后回到本页点击「我已登录」。",
     }
 
 
@@ -1384,13 +1432,16 @@ async def interactive_mail_login_complete(request: Request):
                 status_code=400,
                 content={
                     "status": "error",
-                    "message": "请先在当前账号下点击「打开邮箱登录窗口」。",
+                    "message": "请先在当前账号下点击「打开登录窗口」。",
                 },
             )
         if not state.context or not state.page or state.page.is_closed():
             return JSONResponse(
                 status_code=400,
-                content={"status": "error", "message": "浏览器会话已失效，请重新开始。"},
+                content={
+                    "status": "error",
+                    "message": "登录窗口已关闭或会话已失效，请重新点击「打开登录窗口」。",
+                },
             )
 
         outcome = await probe_mail_session_on_page(state.page)
@@ -1417,8 +1468,10 @@ async def interactive_mail_login_complete(request: Request):
         if not normalized:
             return JSONResponse(
                 status_code=400,
-                content={"status": "error",
-                         "message": "未能读取到任何 Cookie，请确认已登录成功。"},
+                content={
+                    "status": "error",
+                    "message": "未能读取到会话数据，请确认已在邮箱中登录成功。",
+                },
             )
 
         cfg = auth_db.load_user_config(uid)
@@ -1456,7 +1509,7 @@ async def interactive_mail_login_cancel(request: Request):
         if state.interactive_login_user_id != uid:
             return {"status": "success", "message": "没有进行中的交互登录。"}
         await close_browser_resources()
-    return {"status": "success", "message": "已取消。"}
+    return {"status": "success", "message": "已取消。可重新点击「打开登录窗口」连接邮箱。"}
 
 
 @app.get("/api/mail/interactive_login/status")
@@ -1488,7 +1541,7 @@ def _parse_iso_date_boundary(s: Optional[str], *, end_of_day: bool = False) -> O
 @app.post("/api/deep_scan")
 async def deep_scan(http_request: Request, payload: DeepScanRequest):
     """
-    深度扫描：与开发者测试同款拉列表 + 抽完整正文，正则分类，落盘 deep_scan_result.json，
+    深度扫描：拉列表 + 抽完整正文，正则分类，落盘 deep_scan_result.json，
     并缓存 state.deep_scan_export；不调 LLM。后续深度分析仅读本地 JSON，不碰浏览器。
     """
     uid = require_user_id(http_request)
@@ -1526,14 +1579,14 @@ async def deep_scan(http_request: Request, payload: DeepScanRequest):
 
         state.current_stage = "searching"
         state.stage_detail = (
-            f"〔深度扫描〕正在拉取并提取正文（最多 {DEEP_MAX_EMAILS} 封，与开发者测试同款）…"
+            f"〔深度扫描〕正在拉取并提取正文（最多 {DEEP_MAX_EMAILS} 封）…"
         )
         try:
             deep_export_doc, emails = await dev_style_deep_extract_to_export(
                 state.page,
                 kw,
                 state.config,
-                max_list_emails=DEEP_MAX_EMAILS,
+                max_list_emails=max(10, min(DEEP_MAX_EMAILS, payload.email_count)),
                 ui_label="〔深度扫描〕",
                 write_debug_artifacts=False,
             )
@@ -1542,8 +1595,7 @@ async def deep_scan(http_request: Request, payload: DeepScanRequest):
             state.stage_detail = ""
             return JSONResponse(
                 status_code=200,
-                content={"status": "cookie_expired",
-                         "message": str(e), "emails": []},
+                content={"status": "cookie_expired", "message": str(e), "emails": []},
             )
         except Exception as e:
             logger.exception("deep_scan")
@@ -1572,8 +1624,7 @@ async def deep_scan(http_request: Request, payload: DeepScanRequest):
             "indices": deep_export_doc.get("indices"),
             "samples": deep_export_doc["samples"],
         }
-        export_stem = _deep_scan_export_stem_from_iso(
-            str(export_to_save.get("exported_at") or ""))
+        export_stem = _deep_scan_export_stem_from_iso(str(export_to_save.get("exported_at") or ""))
         snapshot_saved = False
         try:
             _save_deep_scan_result_json(export_to_save)
@@ -1593,54 +1644,44 @@ async def deep_scan(http_request: Request, payload: DeepScanRequest):
         state.current_stage = "idle"
         state.stage_detail = ""
 
-    samples = (state.deep_scan_export or {}).get("samples") or []
-    out_rows = []
-    cat_counts = {c: 0 for c in EMAIL_CATEGORY_LABELS}
-    parsed_dates: list[datetime] = []
+    return _build_deep_scan_api_success_payload(
+        state.deep_scan_export or {},
+        snapshot_saved=snapshot_saved,
+        export_stem=export_stem,
+    )
 
-    for s in samples:
-        sender = s.get("sender") or ""
-        subj = s.get("subject") or ""
-        preview = (s.get("body") or "")[:400]
-        cat = s.get("category") or classify_email(sender, subj, preview)
-        cat_counts[cat] = cat_counts.get(cat, 0) + 1
-        pd = parse_email_date_for_filter(s.get("date") or "")
-        if pd:
-            parsed_dates.append(pd)
-        cv = s.get("convid")
-        convid_str = (cv if isinstance(cv, str) else "")[:80]
-        out_rows.append(
-            {
-                "index": int(s.get("index") or 0),
-                "subject": subj,
-                "date": s.get("date") or "",
-                "sender": sender,
-                "preview": preview,
-                "category": cat,
-                "convid": convid_str,
-            }
+
+@app.get("/api/deep_scan/last")
+async def deep_scan_load_last(http_request: Request):
+    """
+    从 deep_scan_result.json（或内存中的上次导出）恢复与深度扫描成功时相同的数据结构，
+    供前端「查看上次记录」使用，无需再次访问邮箱。
+    """
+    require_user_id(http_request)
+    export_doc = _load_deep_scan_export_from_disk()
+    if export_doc is None or not export_doc.get("samples"):
+        export_doc = state.deep_scan_export
+    if export_doc is None or not export_doc.get("samples"):
+        return JSONResponse(
+            status_code=404,
+            content={
+                "status": "empty",
+                "message": "本地没有深度扫描历史记录。请先执行一次「深度扫描」生成 deep_scan_result.json。",
+            },
         )
 
-    date_min = ""
-    date_max = ""
-    if parsed_dates:
-        mn = min(parsed_dates)
-        mx = max(parsed_dates)
-        date_min = mn.strftime("%Y-%m-%d")
-        date_max = mx.strftime("%Y-%m-%d")
+    async with execute_lock:
+        state.deep_scan_export = export_doc
+        state.deep_scan_keyword = (export_doc.get("keyword") or "").strip()
 
-    n = len(samples)
-    return {
-        "status": "success",
-        "message": f"已扫描 {n} 封邮件（列表顺序与收件箱一致，正文已缓存至本地）。",
-        "list_count": n,
-        "keyword": kw,
-        "emails": out_rows,
-        "categories": cat_counts,
-        "date_range": {"min": date_min, "max": date_max},
-        "export_stem": export_stem,
-        "snapshot_saved": snapshot_saved,
-    }
+    stem = _deep_scan_export_stem_from_iso(str(export_doc.get("exported_at") or ""))
+    snap_ok = DEEP_SCAN_RESULT_JSON.is_file()
+    return _build_deep_scan_api_success_payload(
+        export_doc,
+        snapshot_saved=snap_ok,
+        export_stem=stem,
+        message="已从本地历史 JSON 恢复上次深度扫描列表，可继续筛选或分析。",
+    )
 
 
 @app.post("/api/deep_scan/save_chart")
@@ -1687,7 +1728,7 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                 "message": "正在通过浏览器连接邮箱，请先完成「我已登录」保存会话，或点击「取消」后再开始分析。",
             },
         )
-
+        
     if state.auto_cookie_status not in ("valid", "warning"):
         return JSONResponse(
             status_code=403,
@@ -1756,8 +1797,20 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                 state.stage_detail = str(e)
                 raise
 
-        print(
-            f"Executing task: search='{keyword or '(最新邮件)'}', instruction='{instruction}', use_indices={use_indices}")
+        kg = payload.keyword_groups
+        multi_kw = (
+            payload.mode == "daily"
+            and kg is not None
+            and len(kg) > 0
+        )
+        if multi_kw:
+            print(
+                f"Executing task: keyword_groups={len(kg)} groups, instruction='{instruction}', use_indices={use_indices}"
+            )
+        else:
+            print(
+                f"Executing task: search='{keyword or '(最新邮件)'}', instruction='{instruction}', use_indices={use_indices}"
+            )
 
         try:
             limit_ceiling = (
@@ -1772,18 +1825,15 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
             if payload.mode == "deep":
                 # 从内存或 deep_scan_result.json 读取正文，不访问浏览器、不再调用 dev_style_deep_extract
                 assert export_doc is not None
-                d_lo = _parse_iso_date_boundary(
-                    payload.date_from, end_of_day=False)
-                d_hi = _parse_iso_date_boundary(
-                    payload.date_to, end_of_day=True)
+                d_lo = _parse_iso_date_boundary(payload.date_from, end_of_day=False)
+                d_hi = _parse_iso_date_boundary(payload.date_to, end_of_day=True)
                 idx_order: dict = {}
                 idx_set: Optional[set] = None
                 n_list = len(export_doc["samples"])
 
                 if use_indices:
                     idxs_sorted = sorted(
-                        {i for i in (payload.indices or [])
-                         if isinstance(i, int)}
+                        {i for i in (payload.indices or []) if isinstance(i, int)}
                     )
                     if not idxs_sorted:
                         state.current_stage = "idle"
@@ -1830,8 +1880,7 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                             },
                         )
                     idx_set = set(idxs_sorted)
-                    idx_order = {idx: pos for pos,
-                                 idx in enumerate(idxs_sorted)}
+                    idx_order = {idx: pos for pos, idx in enumerate(idxs_sorted)}
 
                 state.stage_detail = (
                     f"〔深度分析〕从本地缓存读取正文（共 {n_list} 封，不访问浏览器）…"
@@ -1927,85 +1976,223 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                     )
 
             else:
-                # 日常模式
-                state.current_stage = "searching"
-                state.stage_detail = (
-                    f"正在搜索关键词: {keyword}" if keyword else "正在获取最新邮件..."
-                )
-                print(f"Searching for: {keyword}")
-                try:
-                    emails = await search_emails(
-                        state.page,
-                        keyword,
-                        config=state.config,
-                        max_emails=safe_count,
-                        mode="daily",
-                    )
-                except RuntimeError as e:
-                    state.current_stage = "error"
-                    state.stage_detail = str(e)
-                    return JSONResponse(
-                        status_code=200,
-                        content={
-                            "status": "cookie_expired",
-                            "message": str(e),
-                        },
-                    )
-                state.email_results = emails
-
-                state.current_stage = "extracting"
-                state.total_count = len(emails)
-                state.extracted_count = 0
-                state.stage_detail = f"正在提取 {len(emails)} 封邮件正文..."
-                print(f"Extracting bodies for {len(emails)} emails...")
-
-                for i, email in enumerate(emails):
-                    state.extracted_count = i + 1
-                    state.stage_detail = f"正在提取第 {i+1}/{len(emails)} 封邮件..."
-                    print(f"Extracting body for email {i+1}...")
-                    loc = email.get("locator")
-                    try:
-                        body, pane_disp, pane_sort = await extract_full_body(
-                            state.page,
-                            loc,
-                            expected_subject=email.get("subject", ""),
-                            fast_activation=False,
+                # 日常模式：单关键词一次搜索后统一提取；多关键词每组搜索后立即提取正文（避免列表 DOM 刷新后 locator 失效）
+                if multi_kw:
+                    assert kg is not None
+                    effective_groups = []
+                    for g in kg:
+                        kw_g = (g.keyword or "").strip()
+                        ec_g = max(0, min(int(g.email_count), DAILY_MAX_EMAILS))
+                        if ec_g <= 0:
+                            continue
+                        effective_groups.append((kw_g, ec_g))
+                    if not effective_groups:
+                        state.current_stage = "idle"
+                        state.stage_detail = ""
+                        return JSONResponse(
+                            status_code=400,
+                            content={
+                                "status": "error",
+                                "message": "请至少为一组关键词设置 1 封以上的邮件数。",
+                            },
                         )
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to extract email {i+1} body: {repr(e)}")
-                        body = f"[正文提取失败: {str(e)[:100]}]"
-                        pane_disp, pane_sort = "", ""
-                        failed_count += 1
-                    merged_disp, merged_sort = merge_list_and_pane_datetime(
-                        str(email.get("date", "") or ""),
-                        str(email.get("date_display", "") or ""),
-                        pane_sort,
-                        pane_disp,
+                    n_groups = len(effective_groups)
+                    seen_keys: set = set()
+                    accumulated_for_state: list = []
+                    processed_counter = 0
+                    grand_total_rows = 0
+                    for gi, (kw_g, ec_g) in enumerate(effective_groups):
+                        state.current_stage = "searching"
+                        label = kw_g if kw_g else "(最新邮件)"
+                        state.stage_detail = f"正在搜索关键词 {gi + 1}/{n_groups}: {label}"
+                        print(
+                            f"Searching group {gi + 1}/{n_groups}: {label!r}, max_emails={ec_g}"
+                        )
+                        try:
+                            part = await search_emails(
+                                state.page,
+                                kw_g,
+                                config=state.config,
+                                max_emails=ec_g,
+                                mode="daily",
+                            )
+                        except RuntimeError as e:
+                            state.current_stage = "error"
+                            state.stage_detail = str(e)
+                            return JSONResponse(
+                                status_code=200,
+                                content={
+                                    "status": "cookie_expired",
+                                    "message": str(e),
+                                },
+                            )
+                        accumulated_for_state.extend(part)
+                        grand_total_rows += len(part)
+                        state.total_count = grand_total_rows
+                        state.current_stage = "extracting"
+                        state.stage_detail = (
+                            f"正在提取本组 {len(part)} 封（共 {grand_total_rows} 条原始行）…"
+                        )
+                        for li, email in enumerate(part):
+                            processed_counter += 1
+                            state.extracted_count = processed_counter
+                            state.stage_detail = (
+                                f"正在提取第 {processed_counter}/{grand_total_rows} 封"
+                                f"（关键词组 {gi + 1}/{n_groups}）…"
+                            )
+                            subj = (email.get("subject") or "")[:120]
+                            logger.info(
+                                "daily multi extract: group %d/%d item %d/%d subject=%r",
+                                gi + 1,
+                                n_groups,
+                                li + 1,
+                                len(part),
+                                subj,
+                            )
+                            print(
+                                f"Extracting body for email {processed_counter} "
+                                f"(group {gi + 1}/{n_groups}, row {li + 1}/{len(part)})…"
+                            )
+                            loc = email.get("locator")
+                            try:
+                                body, pane_disp, pane_sort = await extract_full_body(
+                                    state.page,
+                                    loc,
+                                    expected_subject=email.get("subject", ""),
+                                    fast_activation=False,
+                                )
+                            except Exception as e:
+                                logger.warning(
+                                    "Failed to extract body (multi group %d row %d): %s",
+                                    gi + 1,
+                                    li + 1,
+                                    repr(e),
+                                )
+                                body = f"[正文提取失败: {str(e)[:100]}]"
+                                pane_disp, pane_sort = "", ""
+                                failed_count += 1
+                            merged_disp, merged_sort = merge_list_and_pane_datetime(
+                                str(email.get("date", "") or ""),
+                                str(email.get("date_display", "") or ""),
+                                pane_sort,
+                                pane_disp,
+                            )
+                            final_sort = merged_sort or email.get("date", "")
+                            final_disp = merged_disp or merged_sort or email.get("date", "")
+                            dk = _daily_dedupe_key(email, final_sort, final_disp)
+                            if dk in seen_keys:
+                                logger.info(
+                                    "daily multi: skip duplicate after extract key=%s subject=%r",
+                                    dk,
+                                    subj,
+                                )
+                                continue
+                            seen_keys.add(dk)
+                            idx = len(extracted_items) + 1
+                            logger.info(
+                                "daily multi: kept email key=%s final_index=%d subject=%r",
+                                dk,
+                                idx,
+                                subj,
+                            )
+                            extracted_items.append(
+                                {
+                                    "index": idx,
+                                    "subject": email.get("subject", ""),
+                                    "date": final_sort,
+                                    "date_display": final_disp,
+                                    "sender": email.get("sender", ""),
+                                    "body": body,
+                                }
+                            )
+                            sanitized_emails.append(
+                                {
+                                    "id": len(sanitized_emails),
+                                    "subject": email.get("subject", ""),
+                                    "date": final_sort,
+                                    "date_display": final_disp,
+                                    "href": email.get("href", ""),
+                                }
+                            )
+                            await asyncio.sleep(0.2)
+                    state.email_results = accumulated_for_state
+                else:
+                    state.current_stage = "searching"
+                    state.stage_detail = (
+                        f"正在搜索关键词: {keyword}" if keyword else "正在获取最新邮件..."
                     )
-                    final_sort = merged_sort or email.get("date", "")
-                    final_disp = merged_disp or merged_sort or email.get(
-                        "date", "")
-                    extracted_items.append(
-                        {
-                            "index": i + 1,
-                            "subject": email.get("subject", ""),
-                            "date": final_sort,
-                            "date_display": final_disp,
-                            "sender": email.get("sender", ""),
-                            "body": body,
-                        }
-                    )
-                    sanitized_emails.append(
-                        {
-                            "id": i,
-                            "subject": email.get("subject", ""),
-                            "date": final_sort,
-                            "date_display": final_disp,
-                            "href": email.get("href", ""),
-                        }
-                    )
-                    await asyncio.sleep(0.2)
+                    print(f"Searching for: {keyword}")
+                    try:
+                        emails = await search_emails(
+                            state.page,
+                            keyword,
+                            config=state.config,
+                            max_emails=safe_count,
+                            mode="daily",
+                        )
+                    except RuntimeError as e:
+                        state.current_stage = "error"
+                        state.stage_detail = str(e)
+                        return JSONResponse(
+                            status_code=200,
+                            content={
+                                "status": "cookie_expired",
+                                "message": str(e),
+                            },
+                        )
+                    state.email_results = emails
+
+                    state.current_stage = "extracting"
+                    state.total_count = len(emails)
+                    state.extracted_count = 0
+                    state.stage_detail = f"正在提取 {len(emails)} 封邮件正文..."
+                    print(f"Extracting bodies for {len(emails)} emails...")
+
+                    for i, email in enumerate(emails):
+                        state.extracted_count = i + 1
+                        state.stage_detail = f"正在提取第 {i+1}/{len(emails)} 封邮件..."
+                        print(f"Extracting body for email {i+1}...")
+                        loc = email.get("locator")
+                        try:
+                            body, pane_disp, pane_sort = await extract_full_body(
+                                state.page,
+                                loc,
+                                expected_subject=email.get("subject", ""),
+                                fast_activation=False,
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to extract email {i+1} body: {repr(e)}")
+                            body = f"[正文提取失败: {str(e)[:100]}]"
+                            pane_disp, pane_sort = "", ""
+                            failed_count += 1
+                        merged_disp, merged_sort = merge_list_and_pane_datetime(
+                            str(email.get("date", "") or ""),
+                            str(email.get("date_display", "") or ""),
+                            pane_sort,
+                            pane_disp,
+                        )
+                        final_sort = merged_sort or email.get("date", "")
+                        final_disp = merged_disp or merged_sort or email.get("date", "")
+                        extracted_items.append(
+                            {
+                                "index": i + 1,
+                                "subject": email.get("subject", ""),
+                                "date": final_sort,
+                                "date_display": final_disp,
+                                "sender": email.get("sender", ""),
+                                "body": body,
+                            }
+                        )
+                        sanitized_emails.append(
+                            {
+                                "id": i,
+                                "subject": email.get("subject", ""),
+                                "date": final_sort,
+                                "date_display": final_disp,
+                                "href": email.get("href", ""),
+                            }
+                        )
+                        await asyncio.sleep(0.2)
 
             if failed_count > 0:
                 logger.info(
@@ -2031,8 +2218,7 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
             n = len(extracted_items)
             body_words = total_extracted_body_words(extracted_items)
             today = datetime.now().strftime("%Y-%m-%d")
-            total_batches = (n + LLM_PARALLEL_BATCH_SIZE -
-                             1) // LLM_PARALLEL_BATCH_SIZE
+            total_batches = (n + LLM_PARALLEL_BATCH_SIZE - 1) // LLM_PARALLEL_BATCH_SIZE
             logger.info(
                 f"邮件正文总词数: {body_words}；每批并发 {LLM_PARALLEL_BATCH_SIZE} 次，"
                 f"共 {total_batches} 批单封 LLM + 1 次汇总 LLM"
@@ -2063,7 +2249,7 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
 
             normalized = []
             for batch_index, start in enumerate(range(0, n, LLM_PARALLEL_BATCH_SIZE), start=1):
-                batch_prompts = prompts[start: start + LLM_PARALLEL_BATCH_SIZE]
+                batch_prompts = prompts[start : start + LLM_PARALLEL_BATCH_SIZE]
                 state.stage_detail = (
                     f"并行分析第 {batch_index}/{total_batches} 批邮件"
                     f"（本批 {len(batch_prompts)} 封）…"
@@ -2076,8 +2262,7 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
                     *[run_llm_task(p) for p in batch_prompts],
                     return_exceptions=True,
                 )
-                normalized.extend(normalize_parallel_llm_result(r)
-                                  for r in parallel_out)
+                normalized.extend(normalize_parallel_llm_result(r) for r in parallel_out)
             per_email_sections = "\n\n".join(
                 f"—— 第 {i + 1} 封邮件的初步分析 ——\n{t}" for i, t in enumerate(normalized)
             )
@@ -2113,263 +2298,6 @@ async def execute_task(http_request: Request, payload: ExecuteRequest):
             return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 
-@app.post("/api/dev/extract_sample_bodies")
-async def dev_extract_sample_bodies(http_request: Request, payload: DevExtractSampleBodiesRequest):
-    """
-    开发者：深度模式拉取列表（最多 DEEP_MAX_EMAILS 封），对全部条目执行 extract_full_body，
-    不调 LLM；成功后将结果写入 src 下 JSON（便于脚本/后续处理）。
-    """
-    uid = require_user_id(http_request)
-    if state.interactive_login_user_id is not None:
-        return JSONResponse(
-            status_code=409,
-            content={
-                "status": "error",
-                "message": "正在通过浏览器连接邮箱，请先完成「我已登录」或「取消」后再试。",
-            },
-        )
-    if state.auto_cookie_status not in ("valid", "warning"):
-        return JSONResponse(
-            status_code=403,
-            content={
-                "status": "error",
-                "message": "请先在步骤一中连接校园邮箱并确保验证成功。",
-            },
-        )
-
-    kw = (payload.keyword or "").strip()
-
-    async with execute_lock:
-        state.config = auth_db.load_user_config(uid)
-        try:
-            await ensure_browser()
-        except HTTPException:
-            raise
-        except Exception as e:
-            state.current_stage = "error"
-            state.stage_detail = str(e)
-            raise
-
-        state.current_stage = "searching"
-        state.stage_detail = (
-            f"〔开发者〕深度拉取列表（最多 {DEEP_MAX_EMAILS} 封，较快节奏）…"
-        )
-        try:
-            export_doc, emails = await dev_style_deep_extract_to_export(
-                state.page,
-                kw,
-                state.config,
-                max_list_emails=DEEP_MAX_EMAILS,
-                ui_label="〔开发者〕",
-                write_debug_artifacts=True,
-            )
-        except RuntimeError as e:
-            state.current_stage = "idle"
-            state.stage_detail = ""
-            return JSONResponse(
-                status_code=200,
-                content={"status": "cookie_expired",
-                         "message": str(e), "samples": []},
-            )
-        except Exception as e:
-            logger.exception("dev_extract_sample_bodies")
-            state.current_stage = "error"
-            state.stage_detail = str(e)
-            return JSONResponse(
-                status_code=500,
-                content={"status": "error", "message": str(e), "samples": []},
-            )
-
-        n = export_doc["list_count"]
-        samples = export_doc["samples"]
-        extract_indices = export_doc["indices"]
-        exported_at = export_doc["exported_at"]
-        if n == 0:
-            state.current_stage = "idle"
-            state.stage_detail = ""
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "status": "error",
-                    "message": "当前未找到任何邮件，无法提取。",
-                    "list_count": n,
-                    "samples": [],
-                },
-            )
-
-        state.current_stage = "idle"
-        state.stage_detail = ""
-        state.email_results = emails
-
-        out_fname = "dev_extract_bodies_ALL.json"
-        out_path = Path(__file__).resolve().parent / out_fname
-        out_path.write_text(
-            json.dumps(export_doc, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        logger.info("dev_extract_sample_bodies wrote %s", out_path)
-
-        return {
-            "status": "success",
-            "message": f"已成功提取全量 {n} 封正文（未调用 LLM），已写入 JSON。",
-            "list_count": n,
-            "keyword": kw,
-            "indices": list(extract_indices),
-            "samples": samples,
-            "exported_at": exported_at,
-            "export": export_doc,
-            "output_file": out_fname,
-        }
-
-
-@app.post("/api/dev/extract_daily_bodies_no_llm")
-async def dev_extract_daily_bodies_no_llm(
-    http_request: Request, payload: DevExtractDailyBodiesRequest
-):
-    """
-    开发者测试2：与日常模式一致 — search_emails(mode=daily) 后按序 extract_full_body，
-    不调 LLM；结果仅通过接口返回并在前端展示。
-    """
-    uid = require_user_id(http_request)
-    if state.interactive_login_user_id is not None:
-        return JSONResponse(
-            status_code=409,
-            content={
-                "status": "error",
-                "message": "正在通过浏览器连接邮箱，请先完成「我已登录」或「取消」后再试。",
-            },
-        )
-    if state.auto_cookie_status not in ("valid", "warning"):
-        return JSONResponse(
-            status_code=403,
-            content={
-                "status": "error",
-                "message": "请先在步骤一中连接校园邮箱并确保验证成功。",
-            },
-        )
-
-    kw = (payload.keyword or "").strip()
-    n_req = max(1, min(int(payload.email_count), DAILY_MAX_EMAILS))
-
-    async with execute_lock:
-        state.config = auth_db.load_user_config(uid)
-        try:
-            await ensure_browser()
-        except HTTPException:
-            raise
-        except Exception as e:
-            state.current_stage = "error"
-            state.stage_detail = str(e)
-            raise
-
-        state.current_stage = "searching"
-        state.stage_detail = f"〔开发者·日常流〕正在搜索/拉取列表（最多 {n_req} 封）…"
-        try:
-            emails = await search_emails(
-                state.page,
-                kw,
-                config=state.config,
-                max_emails=n_req,
-                mode="daily",
-            )
-        except RuntimeError as e:
-            state.current_stage = "idle"
-            state.stage_detail = ""
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "cookie_expired",
-                    "message": str(e),
-                    "items": [],
-                    "text": "",
-                },
-            )
-        except Exception as e:
-            logger.exception("dev_extract_daily_bodies_no_llm search")
-            state.current_stage = "error"
-            state.stage_detail = str(e)
-            return JSONResponse(
-                status_code=500,
-                content={"status": "error", "message": str(
-                    e), "items": [], "text": ""},
-            )
-
-        state.email_results = emails
-        state.current_stage = "extracting"
-        state.total_count = len(emails)
-        state.extracted_count = 0
-
-        items = []
-        text_blocks = []
-        for i, email in enumerate(emails):
-            state.extracted_count = i + 1
-            state.stage_detail = f"〔开发者·日常流〕正在提取第 {i + 1}/{len(emails)} 封正文…"
-            subj = (email.get("subject") or "").strip()
-            dt = (email.get("date") or "").strip()
-            d_disp = (email.get("date_display") or "").strip()
-            sender = (email.get("sender") or "").strip()
-            body = ""
-            err = None
-            pane_disp, pane_sort = "", ""
-            try:
-                body, pane_disp, pane_sort = await extract_full_body(
-                    state.page,
-                    email.get("locator"),
-                    expected_subject=subj,
-                )
-            except Exception as exc:
-                logger.warning(
-                    "dev_extract_daily_bodies_no_llm %s: %s", i + 1, repr(exc))
-                err = str(exc)[:200]
-                body = f"[正文提取失败: {err}]"
-
-            merged_disp, merged_sort = merge_list_and_pane_datetime(
-                dt, d_disp, pane_sort, pane_disp
-            )
-            final_date = merged_sort or dt
-            final_disp = merged_disp or merged_sort or dt
-            ok = err is None and bool(body) and not str(
-                body).startswith("[正文提取失败")
-            items.append(
-                {
-                    "index": i + 1,
-                    "subject": subj,
-                    "date": final_date,
-                    "date_display": final_disp,
-                    "sender": sender,
-                    "body": body,
-                    "body_chars": len(body or ""),
-                    "ok": ok,
-                }
-            )
-            text_blocks.append(
-                f"========== 第 {i + 1} 封 ==========\n"
-                f"主题: {subj}\n发件人: {sender or '(无)'}\n日期: {final_disp or final_date or '(无)'}\n\n{body}\n"
-            )
-            await asyncio.sleep(0.2)
-
-        state.current_stage = "idle"
-        state.stage_detail = ""
-
-        header = (
-            f"# dev_extract_daily_bodies_no_llm {datetime.now().isoformat(timespec='seconds')}\n"
-            f"# 与日常模式相同流程（daily），未调用 LLM\n"
-            f"# keyword: {kw or '(empty)'}\n"
-            f"# requested_count: {n_req}  list_count: {len(emails)}\n\n"
-        )
-        full_text = header + "\n".join(text_blocks)
-
-        return {
-            "status": "success",
-            "message": f"日常流程已提取 {len(emails)} 封正文（未调用 LLM）。",
-            "keyword": kw,
-            "requested_count": n_req,
-            "list_count": len(emails),
-            "items": items,
-            "text": full_text,
-        }
-
-
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     uid = _session_user_id(request)
@@ -2385,27 +2313,24 @@ async def read_root(request: Request):
             state.auto_cookie_status = "suggest_check"
             state.auto_cookie_message = "请先验证邮箱可访问再查询哦"
     return templates.TemplateResponse(
-        request,
         "index.html",
         {
+            "request": request,
             "mail_url": mail_url,
             "current_username": u["username"] if u else "",
             "current_email": u["email"] if u else "",
         },
     )
 
-
 @app.post("/api/search")
 async def search(request: SearchRequest):
     return {"status": "deprecated", "message": "Use /api/execute instead"}
 
-
 @app.post("/api/summarize")
-async def summarize(request: Request):  # Changed to Request to avoid undefined model
+async def summarize(request: Request): # Changed to Request to avoid undefined model
     return {"status": "deprecated", "message": "Use /api/execute instead"}
 
 if __name__ == "__main__":
     # Disable reload to avoid Windows subprocess loop issues
     # Use port 8001 to avoid conflicts with hung processes
-    uvicorn.run("app:app", host="127.0.0.1", port=8001,
-                reload=False, loop="asyncio")
+    uvicorn.run("app:app", host="127.0.0.1", port=8001, reload=False, loop="asyncio")
