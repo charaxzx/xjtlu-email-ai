@@ -64,7 +64,7 @@
     <script src="/static/i18n/i18n.js"></script>
 </head>
 <body>
-    <button class="lang-toggle" onclick="i18n.toggle()" id="langToggle"><span id="langLabel">EN</span></button>
+    <button class="lang-toggle" onclick="i18n.toggle()" id="langToggle" type="button" aria-label="Language"><span id="langLabel">EN</span></button>
     <div class="card">
         <h1 data-i18n="register.title">注册</h1>
         <p data-i18n="register.subtitle">用户名用于显示；邮箱为唯一账号，不可重复。</p>
@@ -72,7 +72,7 @@
             <label for="username" data-i18n="register.username_label">用户名</label>
             <input type="text" id="username" name="username" required autocomplete="nickname" data-i18n-placeholder="register.username_placeholder" placeholder="显示名称">
             <label for="email" data-i18n="register.email_label">邮箱</label>
-            <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+            <input type="email" id="email" name="email" required autocomplete="email" data-i18n-placeholder="register.email_placeholder" placeholder="you@example.com">
             <label for="password" data-i18n="register.password_label">密码（至少 6 位）</label>
             <input type="password" id="password" name="password" required autocomplete="new-password" minlength="6" data-i18n-placeholder="register.password_placeholder" placeholder="密码">
             <button type="submit" data-i18n="register.btn_submit">注册并登录</button>

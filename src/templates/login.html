@@ -64,13 +64,13 @@
     <script src="/static/i18n/i18n.js"></script>
 </head>
 <body>
-    <button class="lang-toggle" onclick="i18n.toggle()" id="langToggle"><span id="langLabel">EN</span></button>
+    <button class="lang-toggle" onclick="i18n.toggle()" id="langToggle" type="button" aria-label="Language"><span id="langLabel">EN</span></button>
     <div class="card">
         <h1 data-i18n="login.title">登录</h1>
         <p data-i18n="login.subtitle">使用注册时的邮箱与密码。邮箱为账号唯一标识。</p>
         <form id="loginForm">
             <label for="email" data-i18n="login.email_label">邮箱</label>
-            <input type="email" id="email" name="email" required autocomplete="username" placeholder="you@example.com">
+            <input type="email" id="email" name="email" required autocomplete="username" data-i18n-placeholder="login.email_placeholder" placeholder="you@example.com">
             <label for="password" data-i18n="login.password_label">密码</label>
             <input type="password" id="password" name="password" required autocomplete="current-password" data-i18n-placeholder="login.password_placeholder" placeholder="密码">
             <button type="submit" data-i18n="login.btn_submit">登录</button>

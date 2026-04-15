@@ -335,6 +335,9 @@ def _extract_owa_time_fragment(raw: str) -> str:
         return ""
     patterns = [
         r"(周[一二三四五六日天]\s+\d{1,2}:\d{2})",
+        # OWA 非「今天」行常见：周六 4/4（周几 + 月/日，无时刻）
+        r"(周[一二三四五六日天]\s+\d{1,2}[/-]\d{1,2})",
+        r"((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d{1,2}[/-]\d{1,2})",
         r"((?:昨天|前天)\s*[,.，]?\s*\d{1,2}:\d{2})",
         r"((?:Yesterday|Today)\s*,?\s*\d{1,2}:\d{2}(?:\s*[APap][Mm])?)",
         r"((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d{1,2}:\d{2}(?:\s*[APap][Mm])?)",
@@ -393,6 +396,29 @@ def parse_owa_list_datetime(raw_text: str, now: Optional[datetime] = None) -> tu
             dt = ddt.replace(hour=h, minute=mi, second=0, microsecond=0)
             sk = dt.strftime("%Y-%m-%d %H:%M")
             return (s.strip(), sk)
+
+    # --- 复合：周六 4/4、周六 4-4（中文周几 + 月/日，无时刻；与当天 HH:MM 行并存于列表）---
+    m_wd_md_cn = re.match(
+        r"^(周[一二三四五六日天])\s+(\d{1,2})[/-](\d{1,2})\s*$",
+        s.strip(),
+    )
+    if m_wd_md_cn:
+        mo, d = int(m_wd_md_cn.group(2)), int(m_wd_md_cn.group(3))
+        iso = _month_day_to_iso(mo, d, now)
+        if iso:
+            return (s.strip(), iso)
+
+    # --- 复合：Sat 4/4（英文周几 + 月/日）---
+    m_wd_md_en = re.match(
+        r"^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2})[/-](\d{1,2})\s*$",
+        s.strip(),
+        re.I,
+    )
+    if m_wd_md_en:
+        mo, d = int(m_wd_md_en.group(2)), int(m_wd_md_en.group(3))
+        iso = _month_day_to_iso(mo, d, now)
+        if iso:
+            return (s.strip(), iso)
 
     # --- 复合：昨天 14:11 / 昨天, 14:11 ---
     m_y = re.match(r"^(昨天|前天)\s*[,.，]?\s*(\d{1,2}):(\d{2})\s*$", s.strip())
@@ -576,6 +602,14 @@ def _line_looks_like_metadata_date_token(line: str) -> bool:
         return False
     if len(s) <= 64:
         if re.match(r"^周[一二三四五六日天]\s+\d{1,2}:\d{2}\s*$", s):
+            return True
+        if re.match(r"^周[一二三四五六日天]\s+\d{1,2}[/-]\d{1,2}\s*$", s):
+            return True
+        if re.match(
+            r"^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d{1,2}[/-]\d{1,2}\s*$",
+            s,
+            re.I,
+        ):
             return True
         if re.match(r"^(昨天|前天)\s*[,.，]?\s*\d{1,2}:\d{2}\s*$", s):
             return True
@@ -2187,10 +2221,10 @@ async def main() -> None:
         user_instruction = input("请输入总结指令（例如：只告诉我前3封的内容、只总结有活动的邮件、用简单中文说一下）：").strip()
         if not user_instruction:
             user_instruction = "请用自然语气总结这些邮件，重点关注活动、课程作业和重要事项。"
-        mode_input = input("请选择模式 (1: 日常模式[最高10], 2: 深度搜索[最高100])，默认 1：").strip()
+        mode_input = input("请选择模式 (1: 日常模式[最高10], 2: 深度搜索[最高200])，默认 1：").strip()
         op_mode = "deep" if mode_input == "2" else "daily"
         
-        limit_ceiling = 100 if op_mode == "deep" else 10
+        limit_ceiling = 200 if op_mode == "deep" else 10
         email_count_raw = input(f"请输入处理邮件数量（1-{limit_ceiling}，默认 {limit_ceiling}）：").strip()
         try:
             email_count = int(email_count_raw) if email_count_raw else limit_ceiling
