@@ -747,14 +747,14 @@ class DigestSettingsRequest(BaseModel):
 async def login_page(request: Request):
     if _session_user_id(request) is not None:
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="login.html")
 
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
     if _session_user_id(request) is not None:
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("register.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="register.html")
 
 
 @app.post("/api/auth/login")
@@ -2313,9 +2313,9 @@ async def read_root(request: Request):
             state.auto_cookie_status = "suggest_check"
             state.auto_cookie_message = "请先验证邮箱可访问再查询哦"
     return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
+        request=request,
+        name="index.html",
+        context={
             "mail_url": mail_url,
             "current_username": u["username"] if u else "",
             "current_email": u["email"] if u else "",

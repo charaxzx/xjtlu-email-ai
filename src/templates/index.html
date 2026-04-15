@@ -1494,6 +1494,8 @@
         .digest-panel {
             margin-top: 4px;
             display: none;
+            padding: 20px;
+            overflow: hidden;
         }
 
         .digest-panel.digest-panel-in-settings {
@@ -1603,6 +1605,11 @@
             flex-wrap: wrap;
             gap: 8px;
             align-items: center;
+            min-width: 0;
+        }
+
+        .digest-head-actions > button {
+            max-width: 100%;
         }
 
         .digest-panel-actions {
