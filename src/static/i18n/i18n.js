@@ -93,6 +93,10 @@
       if (toggleLabel) {
         toggleLabel.textContent = _currentLang === "zh" ? "EN" : "中文";
       }
+      var mobileMoreLangLabel = document.getElementById("mobileMoreLangLabel");
+      if (mobileMoreLangLabel) {
+        mobileMoreLangLabel.textContent = _currentLang === "zh" ? "EN" : "中文";
+      }
     },
 
     /** Register a callback for when translations are loaded. */

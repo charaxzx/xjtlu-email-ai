@@ -138,7 +138,7 @@
             align-items: stretch;
             min-height: 100vh;
             width: 100%;
-            max-width: 1560px;
+            max-width: 1720px;
             margin: 0 auto;
             position: relative;
             z-index: 1;
@@ -168,28 +168,94 @@
             -webkit-backdrop-filter: blur(24px);
             backdrop-filter: blur(24px);
             overflow: hidden;
-            min-height: calc(100vh - 32px);
+            min-height: calc(100dvh - 36px);
         }
 
         .app-sidebar {
-            flex: 0 0 220px;
+            flex: 0 0 180px;
             display: flex;
             flex-direction: column;
             background: var(--bg-surface);
             border: 1px solid var(--border);
             border-radius: var(--radius-xl);
             box-shadow: var(--shadow-card);
-            margin: 16px 0 16px 16px;
-            padding: 20px 14px;
+            margin: 12px 0 12px 12px;
+            padding: 16px 10px;
             gap: 8px;
             align-self: flex-start;
             position: sticky;
             top: 16px;
             max-height: calc(100vh - 32px);
+            transition: flex-basis 0.25s ease, width 0.25s ease, padding 0.25s ease, margin 0.25s ease;
+        }
+
+        .app-sidebar.sidebar-collapsed {
+            flex: 0 0 64px;
+            padding: 14px 8px;
+        }
+
+        .app-sidebar.sidebar-collapsed .sidebar-brand {
+            padding: 0;
+            border-bottom: none;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-sidebar.sidebar-collapsed .sidebar-brand .eyebrow,
+        .app-sidebar.sidebar-collapsed .sidebar-brand .brand-title {
+            display: none;
+        }
+
+        .app-sidebar.sidebar-collapsed .sidebar-nav-item {
+            justify-content: center;
+            padding: 10px;
+            gap: 0;
+        }
+
+        .app-sidebar.sidebar-collapsed .sidebar-nav-item span {
+            display: none;
+        }
+
+        .app-sidebar.sidebar-collapsed .sidebar-footer {
+            display: none;
+        }
+
+        .sidebar-toggle {
+            position: absolute;
+            top: 12px;
+            right: 10px;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--bg-soft);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+            padding: 0;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            border-color: var(--accent-border);
+        }
+
+        .app-sidebar.sidebar-collapsed .sidebar-toggle {
+            position: static;
+            margin: 0 auto 12px;
+        }
+
+        .app-sidebar.sidebar-collapsed .sidebar-toggle svg {
+            transform: scaleX(-1);
         }
 
         .sidebar-brand {
-            padding: 4px 8px 16px;
+            padding: 4px 8px 12px;
             border-bottom: 1px solid var(--border);
             margin-bottom: 8px;
         }
@@ -207,7 +273,7 @@
             align-items: center;
             gap: 12px;
             width: 100%;
-            padding: 12px 14px;
+            padding: 10px 12px;
             border-radius: var(--radius-sm);
             border: 1px solid transparent;
             background: transparent;
@@ -296,7 +362,7 @@
         }
 
         .settings-view-inner {
-            padding: 20px 28px 28px;
+            padding: 18px 24px 24px;
             display: grid;
             gap: 20px;
             max-width: 920px;
@@ -304,11 +370,12 @@
 
         .settings-view-inner .settings-panel-section {
             margin: 0;
-            padding: 24px 28px 28px;
+            padding: 20px 24px 24px;
         }
 
         .view-subtoolbar {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             justify-content: flex-end;
             gap: 10px;
@@ -467,7 +534,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 18px;
-            padding: 22px 28px;
+            padding: 18px 24px;
             border-bottom: 1px solid var(--border);
             background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent);
         }
@@ -556,9 +623,9 @@
 
         .workspace {
             display: grid;
-            grid-template-columns: minmax(0, 1.28fr) minmax(300px, 0.52fr);
-            gap: 20px;
-            padding: 24px 28px 28px;
+            grid-template-columns: minmax(0, 1.5fr) minmax(240px, 0.35fr);
+            gap: 18px;
+            padding: 20px 24px 24px;
             align-items: start;
         }
 
@@ -586,7 +653,7 @@
 
         .hero-panel-compact {
             min-height: 0;
-            padding: 22px 24px;
+            padding: 18px 22px;
         }
 
         .hero-panel-compact .hero-copy h1 {
@@ -595,7 +662,7 @@
         }
 
         .security-panel {
-            padding: 22px 24px;
+            padding: 18px 22px;
             background: linear-gradient(145deg, var(--bg-surface), var(--bg-soft));
             border: 1px solid var(--accent-border);
             position: relative;
@@ -846,7 +913,7 @@
         }
 
         .command-panel {
-            padding: 24px;
+            padding: 20px;
             display: grid;
             gap: 16px;
             align-content: start;
@@ -2633,11 +2700,11 @@
 
         .result-grid {
             display: grid;
-            grid-template-columns: minmax(200px, 230px) minmax(0, 1fr);
+            grid-template-columns: minmax(160px, 190px) minmax(0, 1fr);
         }
 
         .result-meta {
-            padding: 20px;
+            padding: 14px;
             background: var(--bg-soft);
             border-right: 1px solid var(--border);
             display: grid;
@@ -2672,7 +2739,7 @@
 
         .result-body {
             min-width: 0;
-            padding: 18px 16px;
+            padding: 14px;
             display: grid;
             gap: 18px;
         }
@@ -3484,6 +3551,53 @@
             background: transparent;
         }
 
+        @media (max-width: 1100px) {
+            .app-sidebar {
+                flex: 0 0 160px;
+                padding: 14px 8px;
+            }
+
+            .sidebar-nav-item {
+                padding: 9px 10px;
+                font-size: 0.86rem;
+            }
+
+            .sidebar-nav-icon {
+                width: 18px;
+                height: 18px;
+            }
+        }
+
+        @media (max-width: 1080px) {
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-panel {
+                grid-template-columns: 1fr;
+                min-height: 0;
+            }
+
+            .workspace-aside {
+                order: 10;
+            }
+        }
+
+        @media (max-width: 960px) {
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .result-meta {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .command-footnote-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 900px) {
             .app-layout {
                 flex-direction: column;
@@ -3511,21 +3625,6 @@
             }
         }
 
-        @media (max-width: 1200px) {
-            .workspace {
-                grid-template-columns: 1fr;
-            }
-
-            .hero-panel {
-                grid-template-columns: 1fr;
-                min-height: 0;
-            }
-
-            .workspace-aside {
-                order: 10;
-            }
-        }
-
         @media (max-width: 840px) {
             body {
                 padding: 14px 10px 28px;
@@ -3550,23 +3649,13 @@
                 justify-content: flex-start;
             }
 
-            .hero-stats,
-            .command-footnote-grid {
+            .hero-stats {
                 grid-template-columns: 1fr;
             }
 
             .progress-container {
                 margin-left: 16px;
                 margin-right: 16px;
-            }
-
-            .result-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .result-meta {
-                border-right: none;
-                border-bottom: 1px solid var(--border);
             }
 
             .results-history-header,
@@ -3609,6 +3698,99 @@
             .step-label {
                 font-size: 0.68rem;
             }
+        }
+
+        .mobile-more-sheet {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 950;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .mobile-more-sheet.active {
+            display: flex;
+        }
+
+        .mobile-more-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+        }
+
+        .mobile-more-content {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            padding: 20px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.18);
+            animation: mobile-more-up 0.22s ease both;
+        }
+
+        @keyframes mobile-more-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .mobile-more-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-strong);
+            margin-bottom: 14px;
+            padding-right: 36px;
+        }
+
+        .mobile-more-close {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 32px;
+            height: 32px;
+            border-radius: 999px;
+            border: none;
+            background: transparent;
+            color: var(--text-faint);
+            font-size: 1.2rem;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mobile-more-close:hover {
+            background: var(--bg-soft);
+            color: var(--text-strong);
+        }
+
+        .mobile-more-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .mobile-more-list .action-chip,
+        .mobile-more-list .action-link {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .mobile-more-user {
+            font-size: 0.86rem;
+            color: var(--text-muted);
+            padding: 10px 12px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            word-break: break-word;
         }
 
         /* 辅助与结构样式类 (用于替换内联样式) */
@@ -4117,6 +4299,9 @@
 <body>
     <div class="app-layout">
         <nav class="app-sidebar" data-i18n-aria-label="sidebar.main_nav_aria" aria-label="主导航">
+            <button type="button" class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebarCollapse()" data-i18n-title="sidebar.collapse_aria" title="收起侧边栏" aria-label="收起侧边栏">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>
+            </button>
             <div class="sidebar-brand">
                 <div class="eyebrow" data-i18n="sidebar.eyebrow">XJTLU</div>
                 <div class="brand-title" data-i18n="topbar.brand">邮件摘要助手</div>
@@ -4627,8 +4812,27 @@
             <svg class="bn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>
             <span data-i18n="sidebar.nav_settings">设置</span>
         </button>
+        <button type="button" id="navMoreBottom" onclick="openMobileMoreSheet()" data-i18n-aria-label="sidebar.nav_more" aria-label="更多">
+            <svg class="bn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            <span data-i18n="sidebar.nav_more">更多</span>
+        </button>
     </nav>
 </div>
+
+    <div class="mobile-more-sheet" id="mobileMoreSheet" aria-hidden="true">
+        <div class="mobile-more-backdrop" onclick="closeMobileMoreSheet()"></div>
+        <div class="mobile-more-content" role="dialog" aria-modal="true" aria-labelledby="mobileMoreTitle">
+            <button type="button" class="mobile-more-close" onclick="closeMobileMoreSheet()" data-i18n-aria-label="js.close_aria" aria-label="关闭">&times;</button>
+            <div class="mobile-more-title" id="mobileMoreTitle" data-i18n="sidebar.more_title">更多</div>
+            <div class="mobile-more-list">
+                <div class="mobile-more-user mono" id="mobileMoreUserText">{{ current_username }} · {{ current_email }}</div>
+                <button type="button" class="action-chip" id="mobileMoreLangToggle" onclick="i18n.toggle(); closeMobileMoreSheet();" data-i18n-title="sidebar.lang_aria" title="切换语言"><span id="mobileMoreLangLabel">EN</span></button>
+                <a class="action-link" href="{{ mail_url }}" target="_blank" rel="noopener noreferrer" data-i18n="topbar.open_mailbox">打开邮箱网页</a>
+                <button class="action-chip" onclick="openModal(); closeMobileMoreSheet();" type="button" data-i18n="topbar.guide">使用说明</button>
+                <button type="button" class="action-chip" onclick="logout(); closeMobileMoreSheet();" data-i18n="topbar.logout">退出</button>
+            </div>
+        </div>
+    </div>
 
     <div id="tutorialModal" class="modal">
         <div class="modal-content">
@@ -6757,6 +6961,15 @@
                             userPill.textContent = newName;
                         }
                     }
+                    const mobileMoreUser = document.getElementById("mobileMoreUserText");
+                    if (mobileMoreUser) {
+                        const parts2 = mobileMoreUser.textContent.split("·");
+                        if (parts2.length > 1) {
+                            mobileMoreUser.textContent = newName + " · " + parts2[1].trim();
+                        } else {
+                            mobileMoreUser.textContent = newName;
+                        }
+                    }
                 } else {
                     showToast(tr("js.username_update_fail", "更新失败: ") + data.message);
                 }
@@ -7057,6 +7270,22 @@
                 await fetch("/api/auth/logout", { method: "POST" });
             } catch (e) { /* ignore */ }
             window.location.href = "/login";
+        }
+
+        function openMobileMoreSheet() {
+            const sheet = document.getElementById("mobileMoreSheet");
+            if (sheet) {
+                sheet.classList.add("active");
+                sheet.setAttribute("aria-hidden", "false");
+            }
+        }
+
+        function closeMobileMoreSheet() {
+            const sheet = document.getElementById("mobileMoreSheet");
+            if (sheet) {
+                sheet.classList.remove("active");
+                sheet.setAttribute("aria-hidden", "true");
+            }
         }
 
         function loadHistory() {
@@ -8504,7 +8733,40 @@
             }
         }
 
+        function toggleSidebarCollapse() {
+            const sidebar = document.querySelector(".app-sidebar");
+            const btn = document.getElementById("sidebarToggle");
+            if (!sidebar) return;
+            const collapsed = sidebar.classList.toggle("sidebar-collapsed");
+            try {
+                localStorage.setItem("sidebar_collapsed", collapsed ? "1" : "");
+            } catch (e) {}
+            if (btn) {
+                const collapseLabel = tr("sidebar.collapse_aria", "收起侧边栏");
+                const expandLabel = tr("sidebar.expand_aria", "展开侧边栏");
+                const label = collapsed ? expandLabel : collapseLabel;
+                btn.setAttribute("aria-label", label);
+                btn.setAttribute("title", label);
+            }
+        }
+
+        function applySidebarCollapsedState() {
+            try {
+                const sidebar = document.querySelector(".app-sidebar");
+                const btn = document.getElementById("sidebarToggle");
+                if (sidebar && localStorage.getItem("sidebar_collapsed") === "1") {
+                    sidebar.classList.add("sidebar-collapsed");
+                    if (btn) {
+                        const expandLabel = tr("sidebar.expand_aria", "展开侧边栏");
+                        btn.setAttribute("aria-label", expandLabel);
+                        btn.setAttribute("title", expandLabel);
+                    }
+                }
+            } catch (e) {}
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
+            applySidebarCollapsedState();
             const cookieTextarea = document.getElementById("emailCookies");
             if (cookieTextarea) {
                 cookieTextarea.addEventListener("input", () => normalizeCookieTextareaValue(false));
